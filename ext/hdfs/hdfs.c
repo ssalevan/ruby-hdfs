@@ -93,6 +93,13 @@ VALUE HDFS_File_System_delete(VALUE self, VALUE path) {
   return value == 0 ? Qtrue : Qfalse;
 }
 
+VALUE HDFS_File_System_rename(VALUE self, VALUE current_path, VALUE destination_path) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  int value = hdfsRename(data->fs, RSTRING_PTR(current_path), RSTRING_PTR(destination_path));
+  return value == 0 ? Qtrue : Qfalse;
+}
+
 VALUE HDFS_File_System_exist(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -232,6 +239,7 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "disconnect", HDFS_File_System_disconnect, 0);
   rb_define_method(c_file_system, "open", HDFS_File_System_open, 3);
   rb_define_method(c_file_system, "delete", HDFS_File_System_delete, 1);
+  rb_define_method(c_file_system, "rename", HDFS_File_System_rename, 2);
   rb_define_method(c_file_system, "exist?", HDFS_File_System_exist, 1);
   rb_define_method(c_file_system, "create_directory", HDFS_File_System_create_directory, 1);
 
