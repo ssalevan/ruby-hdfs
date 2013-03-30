@@ -12,6 +12,7 @@ static VALUE c_file;
 static VALUE e_dfs_exception;
 static VALUE e_file_error;
 static VALUE e_could_not_open;
+static VALUE e_does_not_exist;
 
 static const HDFS_DEFAULT_BLOCK_SIZE = 134217728;
 static const char* HDFS_DEFAULT_HOST = "localhost";
@@ -30,6 +31,11 @@ typedef struct FileData {
   hdfsFile file;
 } FileData;
 
+typedef struct FileInfo {
+  hdfsFS fs;
+  hdfsFileInfo file_info;
+} FileInfo;
+
 void free_fs_data(FSData* data) {
   if (data && data->fs != NULL) {
     hdfsDisconnect(data->fs);
@@ -41,6 +47,12 @@ void free_file_data(FileData* data) {
   if (data && data->file != NULL) {
     hdfsCloseFile(data->fs, data->file);
     data->file = NULL;
+  }
+}
+
+void free_file_info(FileInfo* info) {
+  if (info && info->fileInfo != NULL) {
+    info->fileInfo = NULL;
   }
 }
 
@@ -112,6 +124,20 @@ VALUE HDFS_File_System_create_directory(VALUE self, VALUE path) {
   Data_Get_Struct(self, FSData, data);
   int value = hdfsCreateDirectory(data->fs, RSTRING_PTR(path));
   return value == 0 ? Qtrue : Qfalse;
+}
+
+VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  hdfsInfo* info = hdfsGetPathInfo(data->fs, RSTRING_PTR(path));
+  if (info == NULL) {
+    rb_raise(e_does_not_exist, "File does not exist: %s", RSTRING_PTR(path));
+    return;
+  }
+  FileInfo* file_info = ALLOC_N(FileInfo, 1);
+  file_info->fs = data->fs;
+  file_info->file_info = info;
+  return Data_Wrap_Struct(c_file, NULL, free_file_info, file_info);
 }
 
 /**
@@ -242,6 +268,7 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "rename", HDFS_File_System_rename, 2);
   rb_define_method(c_file_system, "exist?", HDFS_File_System_exist, 1);
   rb_define_method(c_file_system, "create_directory", HDFS_File_System_create_directory, 1);
+  rb_define_method(c_file_system, "stat", HDFS_File_System_stat, 1);
 
   c_file = rb_define_class_under(m_dfs, "File", rb_cObject);
   rb_define_method(c_file, "read", HDFS_File_read, 1);
@@ -255,5 +282,6 @@ void Init_hdfs() {
   
   e_dfs_exception = rb_define_class_under(m_dfs, "DFSException", rb_eStandardError);
   e_file_error = rb_define_class_under(m_dfs, "FileError", e_dfs_exception);  
-  e_could_not_open = rb_define_class_under(m_dfs, "CouldNotOpenFileError", e_file_error);  
+  e_could_not_open = rb_define_class_under(m_dfs, "CouldNotOpenFileError", e_file_error);
+  e_does_not_exist = rb_define_class_under(m_dfs, "DoesNotExistError", e_file_error); 
 }
