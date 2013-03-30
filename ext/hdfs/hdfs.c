@@ -31,11 +31,6 @@ typedef struct FileData {
   hdfsFile file;
 } FileData;
 
-typedef struct FileInfo {
-  hdfsFS fs;
-  hdfsFileInfo file_info;
-} FileInfo;
-
 void free_fs_data(FSData* data) {
   if (data && data->fs != NULL) {
     hdfsDisconnect(data->fs);
@@ -50,9 +45,9 @@ void free_file_data(FileData* data) {
   }
 }
 
-void free_file_info(FileInfo* info) {
-  if (info && info->fileInfo != NULL) {
-    info->fileInfo = NULL;
+void free_file_info(hdfsFileInfo* info) {
+  if (info) {
+    free(info);
   }
 }
 
@@ -129,14 +124,11 @@ VALUE HDFS_File_System_create_directory(VALUE self, VALUE path) {
 VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  hdfsInfo* info = hdfsGetPathInfo(data->fs, RSTRING_PTR(path));
-  if (info == NULL) {
+  hdfsFileInfo* file_info = hdfsGetPathInfo(data->fs, RSTRING_PTR(path));
+  if (file_info == NULL) {
     rb_raise(e_does_not_exist, "File does not exist: %s", RSTRING_PTR(path));
-    return;
+    return Qnil;
   }
-  FileInfo* file_info = ALLOC_N(FileInfo, 1);
-  file_info->fs = data->fs;
-  file_info->file_info = info;
   return Data_Wrap_Struct(c_file, NULL, free_file_info, file_info);
 }
 
@@ -168,7 +160,7 @@ VALUE HDFS_File_System_open(VALUE self, VALUE path, VALUE mode, VALUE options) {
     RTEST(r_block_size) ? NUM2INT(r_block_size) : HDFS_DEFAULT_BLOCK_SIZE);
   if (file == NULL) {
     rb_raise(e_could_not_open, "Could not open file %s", RSTRING_PTR(path));
-    return;
+    return Qnil;
   }
 
   FileData* file_data = ALLOC_N(FileData, 1);
