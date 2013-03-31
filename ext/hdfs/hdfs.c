@@ -64,6 +64,25 @@ void free_file_info(FileInfo* file_info) {
   }
 }
 
+VALUE wrap_hdfsFileInfo(hdfsFileInfo* info) {
+  // Creates a FileInfo struct, populates it with the file info found, and
+  // assigns it a FileInfo::File or FileInfo::Directory based upon its type.
+  FileInfo* file_info = ALLOC_N(FileInfo, 1);
+  file_info->info = info;
+  switch(file_info->info->mKind) {
+    case kObjectKindDirectory:
+      return Data_Wrap_Struct(c_file_info_directory, NULL, free_file_info,
+          file_info);
+    case kObjectKindFile:
+      return Data_Wrap_Struct(c_file_info_file, NULL, free_file_info,
+          file_info);
+    default:
+      rb_raise(e_dfs_exception, "File was not a file or directory: %s",
+          RSTRING_PTR(path));
+  }
+  return Qnil;
+}
+
 /*
  * File system interface
  */
@@ -142,9 +161,7 @@ VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
     rb_raise(e_does_not_exist, "File does not exist: %s", RSTRING_PTR(path));
     return Qnil;
   }
-  FileInfo* file_info = ALLOC_N(FileInfo, 1);
-  file_info->info = info;
-  return Data_Wrap_Struct(c_file_info, NULL, free_file_info, file_info);
+  return wrap_hdfsFileInfo(info);
 }
 
 VALUE HDFS_File_System_set_replication(VALUE self, VALUE path, VALUE replication) {
@@ -187,7 +204,7 @@ VALUE HDFS_File_System_open(VALUE self, VALUE path, VALUE mode, VALUE options) {
     flags = O_WRONLY;
   } else {
     rb_raise(rb_eArgError, "Mode must be 'r' or 'w'");
-    return;
+    return Qnil;
   }
   VALUE r_buffer_size = rb_hash_aref(options, rb_eval_string(":buffer_size"));
   VALUE r_replication = rb_hash_aref(options, rb_eval_string(":replication"));
@@ -340,18 +357,6 @@ VALUE HDFS_File_Info_size(VALUE self) {
   return INT2NUM(file_info->info->mSize);
 }
 
-VALUE HDFS_File_Info_type(VALUE self) {
-  FileInfo* file_info = NULL;
-  Data_Get_Struct(self, FileInfo, file_info);
-  switch(file_info->info->mKind) {
-    case kObjectKindFile:
-      return c_file_type_file;
-    case kObjectKindDirectory:
-      return c_file_type_directory;
-  }
-  return Qnil;
-}
-
 /*
  * Extension initialization
  */
@@ -392,11 +397,9 @@ void Init_hdfs() {
   rb_define_method(c_file_info, "name", HDFS_File_Info_name, 0);
   rb_define_method(c_file_info, "replication", HDFS_File_Info_replication, 0);
   rb_define_method(c_file_info, "size", HDFS_File_Info_size, 0);
-  rb_define_method(c_file_info, "type", HDFS_File_Info_type, 0);
 
-  c_file_type = rb_define_class_under(m_dfs, "FileType", rb_cObject);
-  c_file_type_file = rb_define_class_under(m_dfs, "File", c_file_type);
-  c_file_type_directory = rb_define_class_under(m_dfs, "Directory", c_file_type);
+  c_file_info_file = rb_define_class_under(m_dfs, "File", c_file_type);
+  c_file_info_directory = rb_define_class_under(m_dfs, "Directory", c_file_type);
 
   e_dfs_exception = rb_define_class_under(m_dfs, "DFSException", rb_eStandardError);
   e_file_error = rb_define_class_under(m_dfs, "FileError", e_dfs_exception);  
