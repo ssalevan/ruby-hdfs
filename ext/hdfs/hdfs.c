@@ -10,9 +10,8 @@ static VALUE m_dfs;
 static VALUE c_file;
 static VALUE c_file_info;
 static VALUE c_file_system;
-static VALUE c_file_type;
-static VALUE c_file_type_file;
-static VALUE c_file_type_directory;
+static VALUE c_file_info_file;
+static VALUE c_file_info_directory;
 static VALUE e_dfs_exception;
 static VALUE e_file_error;
 static VALUE e_could_not_open;
@@ -78,7 +77,7 @@ VALUE wrap_hdfsFileInfo(hdfsFileInfo* info) {
           file_info);
     default:
       rb_raise(e_dfs_exception, "File was not a file or directory: %s",
-          RSTRING_PTR(path));
+          RSTRING_PTR(info->mName));
   }
   return Qnil;
 }
@@ -398,8 +397,8 @@ void Init_hdfs() {
   rb_define_method(c_file_info, "replication", HDFS_File_Info_replication, 0);
   rb_define_method(c_file_info, "size", HDFS_File_Info_size, 0);
 
-  c_file_info_file = rb_define_class_under(m_dfs, "File", c_file_type);
-  c_file_info_directory = rb_define_class_under(m_dfs, "Directory", c_file_type);
+  c_file_info_file = rb_define_class_under(c_file_info, "File", c_file_info);
+  c_file_info_directory = rb_define_class_under(c_file_info, "Directory", c_file_info);
 
   e_dfs_exception = rb_define_class_under(m_dfs, "DFSException", rb_eStandardError);
   e_file_error = rb_define_class_under(m_dfs, "FileError", e_dfs_exception);  
