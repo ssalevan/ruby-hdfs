@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
 
 static VALUE m_hadoop;
 static VALUE m_dfs;
@@ -57,8 +58,8 @@ void free_file_data(FileData* data) {
 }
 
 void free_file_info(FileInfo* file_info) {
-  if (file_info) {
-    file_info->file_info = NULL;
+  if (file_info && file_info->file_info != NULL) {
+    free(file_info->file_info);
   }
 }
 
@@ -246,12 +247,72 @@ VALUE HDFS_File_available(VALUE self) {
   return INT2NUM(result);
 }
 
+VALUE HDFS_File_Info_block_size(VALUE self) {
+  FileInfo* file_info = NULL;
+  Data_Get_Struct(self, FileInfo, file_info);
+  return INT2NUM(file_info->mBlockSize);
+}
+
 VALUE HDFS_File_close(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
   if (data->file != NULL) {
     hdfsCloseFile(data->fs, data->file);
     data->file = NULL;
+  }
+  return Qnil;
+}
+
+VALUE HDFS_File_Info_is_directory(VALUE self) {
+  FileInfo* file_info = NULL;
+  Data_Get_Struct(self, FileInfo, file_info);
+  case(file_info->tObjectKind) {
+    case kObjectKindDirectory:
+      return Qtrue;
+    case kObjectKindFile:
+      return Qfalse;
+  }
+  return Qfalse;
+}
+
+VALUE HDFS_File_Info_is_file(VALUE self) {
+  FileInfo* file_info = NULL;
+  Data_Get_Struct(self, FileInfo, file_info);
+  case(file_info->tObjectKind) {
+    case kObjectKindDirectory:
+      return Qfalse;
+    case kObjectKindFile:
+      return Qtrue;
+  }
+  return Qfalse;
+}
+
+VALUE HDFS_File_Info_last_modified(VALUE self) {
+  FileInfo* file_info = NULL;
+  Data_Get_Struct(self, FileInfo, file_info);
+  return INT2NUM((long int) file_info->mLastMod);
+}
+
+VALUE HDFS_File_Info_replication(VALUE self) {
+  FileInfo* file_info = NULL;
+  Data_Get_Struct(self, FileInfo, file_info);
+  return INT2NUM(file_info->mReplication);
+}
+
+VALUE HDFS_File_Info_size(VALUE self) {
+  FileInfo* file_info = NULL;
+  Data_Get_Struct(self, FileInfo, file_info);
+  return INT2NUM(file_info->mSize);
+}
+
+VALUE HDFS_File_Info_type(VALUE self) {
+  FileInfo* file_info = NULL;
+  Data_Get_Struct(self, FileInfo, file_info);
+  case(file_info->tObjectKind) {
+    case kObjectKindFile:
+      return c_file_type_file;
+    case kObjectKindDirectory:
+      return c_file_type_directory;
   }
   return Qnil;
 }
@@ -286,6 +347,7 @@ void Init_hdfs() {
   rb_define_method(c_file, "close", HDFS_File_close, 0);
 
   c_file_info = rb_define_class_under(m_dfs, "FileInfo", rb_cObject);
+  rb_define_method(c_file_info, "block_size", HDFS_File_Info_block_size, 0);
   rb_define_method(c_file_info, "is_directory?", HDFS_File_Info_is_directory, 0);
   rb_define_method(c_file_info, "is_file?", HDFS_File_Info_is_file, 0);
   rb_define_method(c_file_info, "last_modified", HDFS_File_Info_last_modified, 0);
