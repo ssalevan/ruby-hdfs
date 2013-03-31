@@ -23,6 +23,7 @@ static VALUE file_type_file;
 static VALUE file_type_directory;
 
 static const HDFS_DEFAULT_BLOCK_SIZE = 134217728;
+static const int16_t HDFS_DEFAULT_REPLICATION = 3;
 static const char* HDFS_DEFAULT_HOST = "localhost";
 static const int HDFS_DEFAULT_PORT = 9000;
 
@@ -144,6 +145,14 @@ VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
   FileInfo* file_info = ALLOC_N(FileInfo, 1);
   file_info->info = info;
   return Data_Wrap_Struct(c_file_info, NULL, free_file_info, file_info);
+}
+
+VALUE HDFS_File_System_set_replication(VALUE self, VALUE path, VALUE replication) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  int success = hdfsSetReplication(data->fs, RSTRING_PTR(path),
+      NUM2INT(replication) : HDFS_DEFAULT_REPLICATION);
+  return success == 0 ? Qtrue : Qfalse;
 }
 
 /**
@@ -346,6 +355,7 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "exist?", HDFS_File_System_exist, 1);
   rb_define_method(c_file_system, "create_directory", HDFS_File_System_create_directory, 1);
   rb_define_method(c_file_system, "stat", HDFS_File_System_stat, 1);
+  rb_define_method(c_file_system, "set_replication", HDFS_File_System_set_replication, 2);
 
   c_file = rb_define_class_under(m_dfs, "File", rb_cObject);
   rb_define_method(c_file, "read", HDFS_File_read, 1);
