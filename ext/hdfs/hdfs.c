@@ -40,7 +40,7 @@ typedef struct FileData {
 } FileData;
 
 typedef struct FileInfo {
-  hdfsFileInfo* file_info;
+  hdfsFileInfo* info;
 } FileInfo;
 
 void free_fs_data(FSData* data) {
@@ -58,8 +58,8 @@ void free_file_data(FileData* data) {
 }
 
 void free_file_info(FileInfo* file_info) {
-  if (file_info && file_info->file_info != NULL) {
-    free(file_info->file_info);
+  if (file_info && file_info->info) {
+    free(file_info->info);
   }
 }
 
@@ -136,13 +136,13 @@ VALUE HDFS_File_System_create_directory(VALUE self, VALUE path) {
 VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  hdfsFileInfo* file_info = hdfsGetPathInfo(data->fs, RSTRING_PTR(path));
-  if (file_info == NULL) {
+  hdfsFileInfo* info = hdfsGetPathInfo(data->fs, RSTRING_PTR(path));
+  if (info == NULL) {
     rb_raise(e_does_not_exist, "File does not exist: %s", RSTRING_PTR(path));
     return Qnil;
   }
   FileInfo* file_info = ALLOC_N(FileInfo, 1);
-  file_info->file_info = file_info;
+  file_info->info = info;
   return Data_Wrap_Struct(c_file_info, NULL, free_file_info, file_info);
 }
 
@@ -247,11 +247,6 @@ VALUE HDFS_File_available(VALUE self) {
   return INT2NUM(result);
 }
 
-VALUE HDFS_File_Info_block_size(VALUE self) {
-  FileInfo* file_info = NULL;
-  Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM(file_info->mBlockSize);
-}
 
 VALUE HDFS_File_close(VALUE self) {
   FileData* data = NULL;
@@ -263,10 +258,20 @@ VALUE HDFS_File_close(VALUE self) {
   return Qnil;
 }
 
+/**
+ * HDFS File Info interface
+ */
+
+VALUE HDFS_File_Info_block_size(VALUE self) {
+  FileInfo* file_info = NULL;
+  Data_Get_Struct(self, FileInfo, file_info);
+  return INT2NUM(file_info->info->mBlockSize);
+}
+
 VALUE HDFS_File_Info_is_directory(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  case(file_info->tObjectKind) {
+  switch(file_info->info->mKind) {
     case kObjectKindDirectory:
       return Qtrue;
     case kObjectKindFile:
@@ -278,7 +283,7 @@ VALUE HDFS_File_Info_is_directory(VALUE self) {
 VALUE HDFS_File_Info_is_file(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  case(file_info->tObjectKind) {
+  switch(file_info->info->mKind) {
     case kObjectKindDirectory:
       return Qfalse;
     case kObjectKindFile:
@@ -290,25 +295,31 @@ VALUE HDFS_File_Info_is_file(VALUE self) {
 VALUE HDFS_File_Info_last_modified(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM((long int) file_info->mLastMod);
+  return INT2NUM((long int) file_info->info->mLastMod);
+}
+
+VALUE HDFS_File_Info_name(VALUE self) {
+  FileInfo* file_info = NULL;
+  Data_Get_Struct(self, FileInfo, file_info);
+  return rb_str_new(file_info->info->mName, strlen(file_info->info->mName));
 }
 
 VALUE HDFS_File_Info_replication(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM(file_info->mReplication);
+  return INT2NUM(file_info->info->mReplication);
 }
 
 VALUE HDFS_File_Info_size(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM(file_info->mSize);
+  return INT2NUM(file_info->info->mSize);
 }
 
 VALUE HDFS_File_Info_type(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  case(file_info->tObjectKind) {
+  switch(file_info->info->mKind) {
     case kObjectKindFile:
       return c_file_type_file;
     case kObjectKindDirectory:
