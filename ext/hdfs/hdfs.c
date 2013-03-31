@@ -4,7 +4,6 @@
 #include <assert.h>
 #include <string.h>
 #include <ctype.h>
-#include <time.h>
 
 static VALUE m_hadoop;
 static VALUE m_dfs;
@@ -22,10 +21,11 @@ static VALUE e_does_not_exist;
 static VALUE file_type_file;
 static VALUE file_type_directory;
 
-static const HDFS_DEFAULT_BLOCK_SIZE = 134217728;
+static const HDFS_DEFAULT_BLOCK_SIZE          = 134217728;
 static const int16_t HDFS_DEFAULT_REPLICATION = 3;
-static const char* HDFS_DEFAULT_HOST = "localhost";
-static const int HDFS_DEFAULT_PORT = 9000;
+static const short HDFS_DEFAULT_MODE          = 0644;
+static const char* HDFS_DEFAULT_HOST          = "localhost";
+static const int HDFS_DEFAULT_PORT            = 9000;
 
 /*
  * Data structs
@@ -60,7 +60,7 @@ void free_file_data(FileData* data) {
 
 void free_file_info(FileInfo* file_info) {
   if (file_info && file_info->info) {
-    free(file_info->info);
+    hdfsFreeFileInfo(file_info->info, 1);
   }
 }
 
@@ -152,6 +152,21 @@ VALUE HDFS_File_System_set_replication(VALUE self, VALUE path, VALUE replication
   Data_Get_Struct(self, FSData, data);
   int success = hdfsSetReplication(data->fs, RSTRING_PTR(path),
       RTEST(replication) ? NUM2INT(replication) : HDFS_DEFAULT_REPLICATION);
+  return success == 0 ? Qtrue : Qfalse;
+}
+
+VALUE HDFS_File_System_cd(VALUE self, VALUE path) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  int success = hdfsSetWorkingDirectory(data->fs, RSTRING_PTR(path));
+  return success == 0 ? Qtrue : Qfalse;
+}
+
+VALUE HDFS_File_System_chmod(VALUE self, VALUE path, VALUE mode) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  int success = hdfsChmod(data->fs, RSTRING_PTR(path),
+      (short) RTEST(mode) ? NUM2INT(mode) : HDFS_DEFAULT_MODE);
   return success == 0 ? Qtrue : Qfalse;
 }
 
@@ -356,6 +371,8 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "create_directory", HDFS_File_System_create_directory, 1);
   rb_define_method(c_file_system, "stat", HDFS_File_System_stat, 1);
   rb_define_method(c_file_system, "set_replication", HDFS_File_System_set_replication, 2);
+  rb_define_method(c_file_system, "cd", HDFS_File_System_cd, 1);
+  rb_define_method(c_file_system, "chmod", HDFS_File_System_chmod, 2);
 
   c_file = rb_define_class_under(m_dfs, "File", rb_cObject);
   rb_define_method(c_file, "read", HDFS_File_read, 1);
