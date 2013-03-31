@@ -7,12 +7,19 @@
 
 static VALUE m_hadoop;
 static VALUE m_dfs;
-static VALUE c_file_system;
 static VALUE c_file;
+static VALUE c_file_info;
+static VALUE c_file_system;
+static VALUE c_file_type;
+static VALUE c_file_type_file;
+static VALUE c_file_type_directory;
 static VALUE e_dfs_exception;
 static VALUE e_file_error;
 static VALUE e_could_not_open;
 static VALUE e_does_not_exist;
+
+static VALUE file_type_file;
+static VALUE file_type_directory;
 
 static const HDFS_DEFAULT_BLOCK_SIZE = 134217728;
 static const char* HDFS_DEFAULT_HOST = "localhost";
@@ -31,6 +38,10 @@ typedef struct FileData {
   hdfsFile file;
 } FileData;
 
+typedef struct FileInfo {
+  hdfsFileInfo* file_info;
+} FileInfo;
+
 void free_fs_data(FSData* data) {
   if (data && data->fs != NULL) {
     hdfsDisconnect(data->fs);
@@ -45,9 +56,9 @@ void free_file_data(FileData* data) {
   }
 }
 
-void free_file_info(hdfsFileInfo* info) {
-  if (info) {
-    free(info);
+void free_file_info(FileInfo* file_info) {
+  if (file_info) {
+    file_info->file_info = NULL;
   }
 }
 
@@ -129,7 +140,9 @@ VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
     rb_raise(e_does_not_exist, "File does not exist: %s", RSTRING_PTR(path));
     return Qnil;
   }
-  return Data_Wrap_Struct(c_file, NULL, free_file_info, file_info);
+  FileInfo* file_info = ALLOC_N(FileInfo, 1);
+  file_info->file_info = file_info;
+  return Data_Wrap_Struct(c_file_info, NULL, free_file_info, file_info);
 }
 
 /**
@@ -271,7 +284,20 @@ void Init_hdfs() {
   rb_define_method(c_file, "flush", HDFS_File_flush, 0);
   rb_define_method(c_file, "available", HDFS_File_available, 0);
   rb_define_method(c_file, "close", HDFS_File_close, 0);
-  
+
+  c_file_info = rb_define_class_under(m_dfs, "FileInfo", rb_cObject);
+  rb_define_method(c_file_info, "is_directory?", HDFS_File_Info_is_directory, 0);
+  rb_define_method(c_file_info, "is_file?", HDFS_File_Info_is_file, 0);
+  rb_define_method(c_file_info, "last_modified", HDFS_File_Info_last_modified, 0);
+  rb_define_method(c_file_info, "name", HDFS_File_Info_name, 0);
+  rb_define_method(c_file_info, "replication", HDFS_File_Info_replication, 0);
+  rb_define_method(c_file_info, "size", HDFS_File_Info_size, 0);
+  rb_define_method(c_file_info, "type", HDFS_File_Info_type, 0);
+
+  c_file_type = rb_define_class_under(m_dfs, "FileType", rb_cObject);
+  c_file_type_file = rb_define_class_under(m_dfs, "File", c_file_type);
+  c_file_type_directory = rb_define_class_under(m_dfs, "Directory", c_file_type);
+
   e_dfs_exception = rb_define_class_under(m_dfs, "DFSException", rb_eStandardError);
   e_file_error = rb_define_class_under(m_dfs, "FileError", e_dfs_exception);  
   e_could_not_open = rb_define_class_under(m_dfs, "CouldNotOpenFileError", e_file_error);
