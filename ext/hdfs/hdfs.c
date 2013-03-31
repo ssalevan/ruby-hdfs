@@ -151,7 +151,7 @@ VALUE HDFS_File_System_set_replication(VALUE self, VALUE path, VALUE replication
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   int success = hdfsSetReplication(data->fs, RSTRING_PTR(path),
-      NUM2INT(replication) : HDFS_DEFAULT_REPLICATION);
+      RTEST(replication) ? NUM2INT(replication) : HDFS_DEFAULT_REPLICATION);
   return success == 0 ? Qtrue : Qfalse;
 }
 
