@@ -189,34 +189,34 @@ VALUE HDFS_File_System_chmod(VALUE self, VALUE path, VALUE mode) {
 VALUE HDFS_File_System_capacity(VALUE self) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  int capacity = hdfsGetCapacity(data->fs);
+  long capacity = hdfsGetCapacity(data->fs);
   if (capacity < 0) {
     rb_raise(e_dfs_exception, "Error while retrieving capacity");
     return Qnil;
   }
-  return INT2NUM(capacity);
+  return LONG2NUM(capacity);
 }
 
 VALUE HDFS_File_System_default_block_size(VALUE self) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  int block_size = hdfsGetDefaultBlockSize(data->fs);
+  long block_size = hdfsGetDefaultBlockSize(data->fs);
   if (block_size < 0) {
     rb_raise(e_dfs_exception, "Error while retrieving default block size");
     return Qnil;
   }
-  return INT2NUM(block_size);
+  return LONG2NUM(block_size);
 }
 
 VALUE HDFS_File_System_used(VALUE self) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  int used = hdfsGetUsed(data->fs);
+  long used = hdfsGetUsed(data->fs);
   if (used < 0) {
     rb_raise(e_dfs_exception, "Error while retrieving used capacity");
     return Qnil;
   }
-  return INT2NUM(used);
+  return LONG2NUM(used);
 }
 
 /**
