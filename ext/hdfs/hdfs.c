@@ -20,11 +20,12 @@ static VALUE e_does_not_exist;
 static VALUE file_type_file;
 static VALUE file_type_directory;
 
-static const HDFS_DEFAULT_BLOCK_SIZE          = 134217728;
-static const int16_t HDFS_DEFAULT_REPLICATION = 3;
-static const short HDFS_DEFAULT_MODE          = 0644;
-static const char* HDFS_DEFAULT_HOST          = "localhost";
-static const int HDFS_DEFAULT_PORT            = 9000;
+static const HDFS_DEFAULT_BLOCK_SIZE            = 134217728;
+static const int16_t HDFS_DEFAULT_REPLICATION   = 3;
+static const short HDFS_DEFAULT_MODE            = 0644;
+static const char* HDFS_DEFAULT_HOST            = "localhost";
+static const int HDFS_DEFAULT_RECURSIVE_DELETE  = 0;
+static const int HDFS_DEFAULT_PORT              = 9000;
 
 /*
  * Data structs
@@ -124,10 +125,11 @@ VALUE HDFS_File_System_disconnect(VALUE self) {
   return Qnil;
 }
 
-VALUE HDFS_File_System_delete(VALUE self, VALUE path) {
+VALUE HDFS_File_System_delete(VALUE self, VALUE path, VALUE recursive) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  int value = hdfsDelete(data->fs, RSTRING_PTR(path));
+  int value = hdfsDelete(data->fs, RSTRING_PTR(path),
+      RTEST(recursive) ? NUM2INT(recursive) : HDFS_DEFAULT_RECURSIVE_DELETE);
   return value == 0 ? Qtrue : Qfalse;
 }
 
@@ -149,13 +151,6 @@ VALUE HDFS_File_System_create_directory(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   int value = hdfsCreateDirectory(data->fs, RSTRING_PTR(path));
-  return value == 0 ? Qtrue : Qfalse;
-}
-
-VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
-  hdfsFileInfo *file_info = hdfsListDirectory(data->fs, RSTRING_PTR(path), );
   return value == 0 ? Qtrue : Qfalse;
 }
 
@@ -348,6 +343,12 @@ VALUE HDFS_File_Info_block_size(VALUE self) {
   return INT2NUM(file_info->info->mBlockSize);
 }
 
+VALUE HDFS_File_Info_group(VALUE self) {
+  FileInfo* file_info = NULL;
+  Data_Get_Struct(self, FileInfo, file_info);
+  return rb_str_new(file_info->info->mGroup, strlen(file_info->info->mGroup));
+}
+
 VALUE HDFS_File_Info_is_directory(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
@@ -372,6 +373,12 @@ VALUE HDFS_File_Info_is_file(VALUE self) {
   return Qfalse;
 }
 
+VALUE HDFS_File_Info_last_access(VALUE self) {
+  FileInfo* file_info = NULL;
+  Data_Get_Struct(self, FileInfo, file_info);
+  return INT2NUM((long int) file_info->info->mLastAccess);
+}
+
 VALUE HDFS_File_Info_last_modified(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
@@ -388,6 +395,12 @@ VALUE HDFS_File_Info_name(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
   return rb_str_new(file_info->info->mName, strlen(file_info->info->mName));
+}
+
+VALUE HDFS_File_Info_owner(VALUE self) {
+  FileInfo* file_info = NULL;
+  Data_Get_Struct(self, FileInfo, file_info);
+  return rb_str_new(file_info->info->mOwner, strlen(file_info->info->mOwner));
 }
 
 VALUE HDFS_File_Info_replication(VALUE self) {
@@ -415,11 +428,10 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "initialize", HDFS_File_System_initialize, 2);
   rb_define_method(c_file_system, "disconnect", HDFS_File_System_disconnect, 0);
   rb_define_method(c_file_system, "open", HDFS_File_System_open, 3);
-  rb_define_method(c_file_system, "delete", HDFS_File_System_delete, 1);
+  rb_define_method(c_file_system, "delete", HDFS_File_System_delete, 2);
   rb_define_method(c_file_system, "rename", HDFS_File_System_rename, 2);
   rb_define_method(c_file_system, "exist?", HDFS_File_System_exist, 1);
   rb_define_method(c_file_system, "create_directory", HDFS_File_System_create_directory, 1);
-  rb_define_method(c_file_system, "list_directory", HDFS_File_System_list_directory, 1);
   rb_define_method(c_file_system, "stat", HDFS_File_System_stat, 1);
   rb_define_method(c_file_system, "set_replication", HDFS_File_System_set_replication, 2);
   rb_define_method(c_file_system, "cd", HDFS_File_System_cd, 1);
@@ -441,11 +453,14 @@ void Init_hdfs() {
 
   c_file_info = rb_define_class_under(m_dfs, "FileInfo", rb_cObject);
   rb_define_method(c_file_info, "block_size", HDFS_File_Info_block_size, 0);
+  rb_define_method(c_file_info, "group", HDFS_File_Info_group, 0);
   rb_define_method(c_file_info, "is_directory?", HDFS_File_Info_is_directory, 0);
   rb_define_method(c_file_info, "is_file?", HDFS_File_Info_is_file, 0);
+  rb_define_method(c_file_info, "last_access", HDFS_File_Info_last_access, 0);
   rb_define_method(c_file_info, "last_modified", HDFS_File_Info_last_modified, 0);
   rb_define_method(c_file_info, "mode", HDFS_File_Info_mode, 0);
   rb_define_method(c_file_info, "name", HDFS_File_Info_name, 0);
+  rb_define_method(c_file_info. "owner", HDFS_File_info_owner, 0);
   rb_define_method(c_file_info, "replication", HDFS_File_Info_replication, 0);
   rb_define_method(c_file_info, "size", HDFS_File_Info_size, 0);
 
