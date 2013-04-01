@@ -20,11 +20,12 @@ static VALUE e_does_not_exist;
 static VALUE file_type_file;
 static VALUE file_type_directory;
 
-static const HDFS_DEFAULT_BLOCK_SIZE          = 134217728;
-static const int16_t HDFS_DEFAULT_REPLICATION = 3;
-static const short HDFS_DEFAULT_MODE          = 0644;
-static const char* HDFS_DEFAULT_HOST          = "localhost";
-static const int HDFS_DEFAULT_PORT            = 9000;
+static const HDFS_DEFAULT_BLOCK_SIZE            = 134217728;
+static const int16_t HDFS_DEFAULT_REPLICATION   = 3;
+static const short HDFS_DEFAULT_MODE            = 0644;
+static const char* HDFS_DEFAULT_HOST            = "localhost";
+static const int HDFS_DEFAULT_RECURSIVE_DELETE  = 0;
+static const int HDFS_DEFAULT_PORT              = 9000;
 
 /*
  * Data structs
@@ -124,10 +125,11 @@ VALUE HDFS_File_System_disconnect(VALUE self) {
   return Qnil;
 }
 
-VALUE HDFS_File_System_delete(VALUE self, VALUE path) {
+VALUE HDFS_File_System_delete(VALUE self, VALUE path, VALUE recursive) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  int value = hdfsDelete(data->fs, RSTRING_PTR(path));
+  int value = hdfsDelete(data->fs, RSTRING_PTR(path),
+      RTEST(recursive) ? NUM2INT(recursive) : HDFS_DEFAULT_RECURSIVE_DELETE);
   return value == 0 ? Qtrue : Qfalse;
 }
 
@@ -152,12 +154,12 @@ VALUE HDFS_File_System_create_directory(VALUE self, VALUE path) {
   return value == 0 ? Qtrue : Qfalse;
 }
 
-VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
+/*VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  hdfsFileInfo *file_info = hdfsListDirectory(data->fs, RSTRING_PTR(path), );
+  hdfsFileInfo *file_info = hdfsListDirectory(data->fs, RSTRING_PTR(path));
   return value == 0 ? Qtrue : Qfalse;
-}
+}*/
 
 VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
   FSData* data = NULL;
@@ -419,7 +421,7 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "rename", HDFS_File_System_rename, 2);
   rb_define_method(c_file_system, "exist?", HDFS_File_System_exist, 1);
   rb_define_method(c_file_system, "create_directory", HDFS_File_System_create_directory, 1);
-  rb_define_method(c_file_system, "list_directory", HDFS_File_System_list_directory, 1);
+  //rb_define_method(c_file_system, "list_directory", HDFS_File_System_list_directory, 1);
   rb_define_method(c_file_system, "stat", HDFS_File_System_stat, 1);
   rb_define_method(c_file_system, "set_replication", HDFS_File_System_set_replication, 2);
   rb_define_method(c_file_system, "cd", HDFS_File_System_cd, 1);
