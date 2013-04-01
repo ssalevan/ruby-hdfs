@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
 
 static VALUE m_hadoop;
 static VALUE m_dfs;
@@ -81,6 +82,33 @@ VALUE wrap_hdfsFileInfo(hdfsFileInfo* info) {
           RSTRING_PTR(info->mName));
   }
   return Qnil;
+}
+
+// Borrowed from:
+// http://www.programiz.com/c-programming/examples/octal-decimal-convert
+
+/* Function to convert decimal to octal */
+int decimal_octal(int n) {
+  int rem, i=1, octal=0;
+  while (n != 0) {
+    rem = n % 8;
+    n /= 8;
+    octal += rem * i;
+    i *= 10;
+  }
+  return octal;
+}
+
+/* Function to convert octal to decimal */
+int octal_decimal(int n) {
+  int decimal=0, i=0, rem;
+  while (n != 0) {
+    rem = n % 10;
+    n /= 10;
+    decimal += rem * pow(8, i);
+    ++i;
+  }
+  return decimal;
 }
 
 /*
@@ -418,7 +446,7 @@ VALUE HDFS_File_Info_last_modified(VALUE self) {
 VALUE HDFS_File_Info_mode(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM(file_info->info->mPermissions);
+  return INT2NUM(octal_to_decimal(file_info->info->mPermissions));
 }
 
 VALUE HDFS_File_Info_name(VALUE self) {
