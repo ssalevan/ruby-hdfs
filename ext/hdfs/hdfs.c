@@ -194,7 +194,7 @@ VALUE HDFS_File_System_capacity(VALUE self) {
     rb_raise(e_dfs_exception, "Error while retrieving capacity");
     return Qnil;
   }
-  return INT2NUM(value);
+  return INT2NUM(capacity);
 }
 
 VALUE HDFS_File_System_default_block_size(VALUE self) {
