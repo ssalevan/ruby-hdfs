@@ -446,7 +446,7 @@ VALUE HDFS_File_Info_last_modified(VALUE self) {
 VALUE HDFS_File_Info_mode(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM(octal_to_decimal(file_info->info->mPermissions));
+  return INT2NUM(decimal_octal(file_info->info->mPermissions));
 }
 
 VALUE HDFS_File_Info_name(VALUE self) {
