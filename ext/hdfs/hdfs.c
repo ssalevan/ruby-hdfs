@@ -152,6 +152,13 @@ VALUE HDFS_File_System_create_directory(VALUE self, VALUE path) {
   return value == 0 ? Qtrue : Qfalse;
 }
 
+VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  hdfsFileInfo *file_info = hdfsListDirectory(data->fs, RSTRING_PTR(path), );
+  return value == 0 ? Qtrue : Qfalse;
+}
+
 VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -371,6 +378,12 @@ VALUE HDFS_File_Info_last_modified(VALUE self) {
   return INT2NUM((long int) file_info->info->mLastMod);
 }
 
+VALUE HDFS_File_Info_mode(VALUE self) {
+  FileInfo* file_info = NULL;
+  Data_Get_Struct(self, FileInfo, file_info);
+  return INT2NUM(file_info->info->mPermissions);
+}
+
 VALUE HDFS_File_Info_name(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
@@ -406,6 +419,7 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "rename", HDFS_File_System_rename, 2);
   rb_define_method(c_file_system, "exist?", HDFS_File_System_exist, 1);
   rb_define_method(c_file_system, "create_directory", HDFS_File_System_create_directory, 1);
+  rb_define_method(c_file_system, "list_directory", HDFS_File_System_list_directory, 1);
   rb_define_method(c_file_system, "stat", HDFS_File_System_stat, 1);
   rb_define_method(c_file_system, "set_replication", HDFS_File_System_set_replication, 2);
   rb_define_method(c_file_system, "cd", HDFS_File_System_cd, 1);
@@ -430,6 +444,7 @@ void Init_hdfs() {
   rb_define_method(c_file_info, "is_directory?", HDFS_File_Info_is_directory, 0);
   rb_define_method(c_file_info, "is_file?", HDFS_File_Info_is_file, 0);
   rb_define_method(c_file_info, "last_modified", HDFS_File_Info_last_modified, 0);
+  rb_define_method(c_file_info, "mode", HDFS_File_Info_mode, 0);
   rb_define_method(c_file_info, "name", HDFS_File_Info_name, 0);
   rb_define_method(c_file_info, "replication", HDFS_File_Info_replication, 0);
   rb_define_method(c_file_info, "size", HDFS_File_Info_size, 0);
