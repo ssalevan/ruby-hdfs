@@ -186,6 +186,39 @@ VALUE HDFS_File_System_chmod(VALUE self, VALUE path, VALUE mode) {
   return success == 0 ? Qtrue : Qfalse;
 }
 
+VALUE HDFS_File_System_capacity(VALUE self) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  int capacity = hdfsGetCapacity(data->fs);
+  if (capacity < 0) {
+    rb_raise(e_dfs_exception, "Error while retrieving capacity");
+    return Qnil;
+  }
+  return INT2NUM(value);
+}
+
+VALUE HDFS_File_System_default_block_size(VALUE self) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  int block_size = hdfsGetDefaultBlockSize(data->fs);
+  if (block_size < 0) {
+    rb_raise(e_dfs_exception, "Error while retrieving default block size");
+    return Qnil;
+  }
+  return INT2NUM(block_size);
+}
+
+VALUE HDFS_File_System_used(VALUE self) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  int used = hdfsGetUsed(data->fs);
+  if (used < 0) {
+    rb_raise(e_dfs_exception, "Error while retrieving used capacity");
+    return Qnil;
+  }
+  return INT2NUM(used);
+}
+
 /**
  * call-seq:
  *    hdfs.open -> file
@@ -377,6 +410,10 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "set_replication", HDFS_File_System_set_replication, 2);
   rb_define_method(c_file_system, "cd", HDFS_File_System_cd, 1);
   rb_define_method(c_file_system, "chmod", HDFS_File_System_chmod, 2);
+  rb_define_method(c_file_system, "capacity", HDFS_File_System_capacity, 0);
+  rb_define_method(c_file_system, "default_block_size",
+      HDFS_File_System_default_block_size, 0);
+  rb_define_method(c_file_system, "used", HDFS_File_System_used, 0);
 
   c_file = rb_define_class_under(m_dfs, "File", rb_cObject);
   rb_define_method(c_file, "read", HDFS_File_read, 1);
