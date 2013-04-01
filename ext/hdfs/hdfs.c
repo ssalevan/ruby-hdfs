@@ -460,7 +460,7 @@ void Init_hdfs() {
   rb_define_method(c_file_info, "last_modified", HDFS_File_Info_last_modified, 0);
   rb_define_method(c_file_info, "mode", HDFS_File_Info_mode, 0);
   rb_define_method(c_file_info, "name", HDFS_File_Info_name, 0);
-  rb_define_method(c_file_info. "owner", HDFS_File_info_owner, 0);
+  rb_define_method(c_file_info, "owner", HDFS_File_Info_owner, 0);
   rb_define_method(c_file_info, "replication", HDFS_File_Info_replication, 0);
   rb_define_method(c_file_info, "size", HDFS_File_Info_size, 0);
 
