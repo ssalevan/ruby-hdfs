@@ -18,9 +18,6 @@ static VALUE e_file_error;
 static VALUE e_could_not_open;
 static VALUE e_does_not_exist;
 
-static VALUE file_type_file;
-static VALUE file_type_directory;
-
 static const HDFS_DEFAULT_BLOCK_SIZE            = 134217728;
 static const int16_t HDFS_DEFAULT_REPLICATION   = 3;
 static const short HDFS_DEFAULT_MODE            = 0644;
