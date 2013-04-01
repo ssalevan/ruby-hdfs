@@ -154,6 +154,20 @@ VALUE HDFS_File_System_create_directory(VALUE self, VALUE path) {
   return value == 0 ? Qtrue : Qfalse;
 }
 
+VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  VALUE file_infos = rb_ary_new();
+  int num_files = 0;
+  hdfsFileInfo* infos = hdfsListDirectory(data->fs, RSTRING_PTR(path),
+      &num_files);
+  for (int i = 0; i < num_files; i++) {
+    hdfsFileInfo* cur_info = infos + (sizeof(hdfsFileInfo) * i);
+    rb_ary_push(file_infos, wrap_hdfsFileInfo(cur_info));
+  }
+  return file_infos;
+}
+
 VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -447,6 +461,7 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "rename", HDFS_File_System_rename, 2);
   rb_define_method(c_file_system, "exist?", HDFS_File_System_exist, 1);
   rb_define_method(c_file_system, "create_directory", HDFS_File_System_create_directory, 1);
+  rb_define_method(c_file_system, "list_directory", HDFS_File_System_list_directory, 1);
   rb_define_method(c_file_system, "stat", HDFS_File_System_stat, 1);
   rb_define_method(c_file_system, "set_replication", HDFS_File_System_set_replication, 2);
   rb_define_method(c_file_system, "cd", HDFS_File_System_cd, 1);
