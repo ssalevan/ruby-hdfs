@@ -180,11 +180,26 @@ VALUE HDFS_File_System_cd(VALUE self, VALUE path) {
   return success == 0 ? Qtrue : Qfalse;
 }
 
+VALUE HDFS_File_System_chgrp(VALUE self, VALUE path, VALUE group) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  int success = hdfsChown(data->fs, RSTRING_PTR(path), NULL,
+      RSTRING_PTR(group));
+  return success == 0 ? Qtrue : Qfalse;
+}
 VALUE HDFS_File_System_chmod(VALUE self, VALUE path, VALUE mode) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   int success = hdfsChmod(data->fs, RSTRING_PTR(path),
       (short) RTEST(mode) ? NUM2INT(mode) : HDFS_DEFAULT_MODE);
+  return success == 0 ? Qtrue : Qfalse;
+}
+
+VALUE HDFS_File_System_chown(VALUE self, VALUE path, VALUE owner) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  int success = hdfsChown(data->fs, RSTRING_PTR(path), RSTRING_PTR(owner),
+      NULL);
   return success == 0 ? Qtrue : Qfalse;
 }
 
@@ -435,7 +450,9 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "stat", HDFS_File_System_stat, 1);
   rb_define_method(c_file_system, "set_replication", HDFS_File_System_set_replication, 2);
   rb_define_method(c_file_system, "cd", HDFS_File_System_cd, 1);
+  rb_define_method(c_file_system, "chgrp", HDFS_File_System_chgrp, 2);
   rb_define_method(c_file_system, "chmod", HDFS_File_System_chmod, 2);
+  rb_define_method(c_file_system, "chown", HDFS_File_System_chown, 2);
   rb_define_method(c_file_system, "capacity", HDFS_File_System_capacity, 0);
   rb_define_method(c_file_system, "default_block_size",
       HDFS_File_System_default_block_size, 0);
