@@ -428,7 +428,7 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "initialize", HDFS_File_System_initialize, 2);
   rb_define_method(c_file_system, "disconnect", HDFS_File_System_disconnect, 0);
   rb_define_method(c_file_system, "open", HDFS_File_System_open, 3);
-  rb_define_method(c_file_system, "delete", HDFS_File_System_delete, 2);
+  rb_define_method(c_file_system, "delete", HDFS_File_System_delete, 1);
   rb_define_method(c_file_system, "rename", HDFS_File_System_rename, 2);
   rb_define_method(c_file_system, "exist?", HDFS_File_System_exist, 1);
   rb_define_method(c_file_system, "create_directory", HDFS_File_System_create_directory, 1);
