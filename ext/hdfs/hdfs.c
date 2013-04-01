@@ -161,8 +161,9 @@ VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
   int num_files = 0;
   hdfsFileInfo* infos = hdfsListDirectory(data->fs, RSTRING_PTR(path),
       &num_files);
-  for (int i = 0; i < num_files; i++) {
-    hdfsFileInfo* cur_info = infos + (sizeof(hdfsFileInfo) * i);
+  int i;
+  for (i = 0; i < num_files; i++) {
+    hdfsFileInfo* cur_info = &infos + (sizeof(hdfsFileInfo) * i);
     rb_ary_push(file_infos, wrap_hdfsFileInfo(cur_info));
   }
   return file_infos;
