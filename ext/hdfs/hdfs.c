@@ -85,7 +85,7 @@ VALUE wrap_hdfsFileInfo(hdfsFileInfo* info) {
   file_info->mLastAccess = info->mLastAccess;
   // Assigns FileInfo::Info or FileInfo::Directory class based upon the type of
   // the variable.
-  switch(file_info->info->mKind) {
+  switch(info->mKind) {
     case kObjectKindDirectory:
       return Data_Wrap_Struct(c_file_info_directory, NULL, free_file_info,
           file_info);
@@ -241,12 +241,12 @@ VALUE HDFS_File_System_cd(VALUE self, VALUE path) {
   return success == 0 ? Qtrue : Qfalse;
 }
 
-VALUE HDFS_File_System_cwd(VALUE self) {
+/*VALUE HDFS_File_System_cwd(VALUE self) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   int success = hdfsSetWorkingDirectory(data->fs, RSTRING_PTR(path));
   return success == 0 ? Qtrue : Qfalse;
-}
+}*/
 
 VALUE HDFS_File_System_chgrp(VALUE self, VALUE path, VALUE group) {
   FSData* data = NULL;
@@ -423,37 +423,29 @@ VALUE HDFS_File_close(VALUE self) {
 VALUE HDFS_File_Info_block_size(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM(file_info->info->mBlockSize);
+  return INT2NUM(file_info->mBlockSize);
 }
 
 VALUE HDFS_File_Info_group(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return rb_str_new(file_info->info->mGroup, strlen(file_info->info->mGroup));
+  return rb_str_new(file_info->mGroup, strlen(file_info->mGroup));
 }
 
 VALUE HDFS_File_Info_is_directory(VALUE self) {
-  FileInfo* file_info = NULL;
-  Data_Get_Struct(self, FileInfo, file_info);
-  switch(file_info->info->mKind) {
-    case kObjectKindDirectory:
-      return Qtrue;
-    case kObjectKindFile:
-      return Qfalse;
-  }
   return Qfalse;
 }
 
+VALUE HDFS_File_Info_Directory_is_directory(VALUE self) {
+  return Qtrue;
+}
+
 VALUE HDFS_File_Info_is_file(VALUE self) {
-  FileInfo* file_info = NULL;
-  Data_Get_Struct(self, FileInfo, file_info);
-  switch(file_info->info->mKind) {
-    case kObjectKindDirectory:
-      return Qfalse;
-    case kObjectKindFile:
-      return Qtrue;
-  }
   return Qfalse;
+}
+
+VALUE HDFS_File_Info_File_is_file(VALUE self) {
+  return Qtrue;
 }
 
 VALUE HDFS_File_Info_last_access(VALUE self) {
@@ -519,7 +511,7 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "stat", HDFS_File_System_stat, 1);
   rb_define_method(c_file_system, "set_replication", HDFS_File_System_set_replication, 2);
   rb_define_method(c_file_system, "cd", HDFS_File_System_cd, 1);
-  rb_define_method(c_file_system, "cwd", HDFS_File_System_cwd, 0);
+  //rb_define_method(c_file_system, "cwd", HDFS_File_System_cwd, 0);
   rb_define_method(c_file_system, "chgrp", HDFS_File_System_chgrp, 2);
   rb_define_method(c_file_system, "chmod", HDFS_File_System_chmod, 2);
   rb_define_method(c_file_system, "chown", HDFS_File_System_chown, 2);
@@ -552,7 +544,10 @@ void Init_hdfs() {
   rb_define_method(c_file_info, "size", HDFS_File_Info_size, 0);
 
   c_file_info_file = rb_define_class_under(c_file_info, "File", c_file_info);
+  rb_define_method(c_file_info_file, "is_file?", HDFS_File_Info_File_is_file, 0);
+
   c_file_info_directory = rb_define_class_under(c_file_info, "Directory", c_file_info);
+  rb_define_method(c_file_info_directory, "is_directory?", HDFS_File_Info_Directory_is_directory, 0);
 
   e_dfs_exception = rb_define_class_under(m_dfs, "DFSException", rb_eStandardError);
   e_file_error = rb_define_class_under(m_dfs, "FileError", e_dfs_exception);  
