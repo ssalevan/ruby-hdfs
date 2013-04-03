@@ -39,7 +39,15 @@ typedef struct FileData {
 } FileData;
 
 typedef struct FileInfo {
-  hdfsFileInfo* info;
+  char* mName;         /* the name of the file */
+  tTime mLastMod;      /* the last modification time for the file in seconds */
+  tOffset mSize;       /* the size of the file in bytes */
+  short mReplication;  /* the count of replicas */
+  tOffset mBlockSize;  /* the block size for the file */
+  char* mOwner;        /* the owner of the file */
+  char* mGroup;        /* the group associated with the file */
+  short mPermissions;  /* the permissions associated with the file */
+  tTime mLastAccess;   /* the last access time for the file in seconds */
 } FileInfo;
 
 void free_fs_data(FSData* data) {
@@ -57,16 +65,26 @@ void free_file_data(FileData* data) {
 }
 
 void free_file_info(FileInfo* file_info) {
-  if (file_info && file_info->info) {
-    hdfsFreeFileInfo(file_info->info, 1);
+  if (file_info) {
+    free(file_info);
   }
 }
 
 VALUE wrap_hdfsFileInfo(hdfsFileInfo* info) {
-  // Creates a FileInfo struct, populates it with the file info found, and
-  // assigns it a FileInfo::File or FileInfo::Directory based upon its type.
+  // Creates a FileInfo struct, populates it with information from the
+  // supplied hdfsFileInfo struct.
   FileInfo* file_info = ALLOC_N(FileInfo, 1);
-  file_info->info = info;
+  file_info->mName = strdup(info->mName);
+  file_info->mLastMod = info->mLastMod;
+  file_info->mSize = info->mSize;
+  file_info->mReplication = info->mReplication;
+  file_info->mBlockSize = info->mBlockSize;
+  file_info->mOwner = strdup(info->mOwner);
+  file_info->mGroup = strdup(info->mGroup);
+  file_info->mPermissions = info->mPermissions;
+  file_info->mLastAccess = info->mLastAccess;
+  // Assigns FileInfo::Info or FileInfo::Directory class based upon the type of
+  // the variable.
   switch(file_info->info->mKind) {
     case kObjectKindDirectory:
       return Data_Wrap_Struct(c_file_info_directory, NULL, free_file_info,
@@ -188,9 +206,10 @@ VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
       &num_files);
   int i;
   for (i = 0; i < num_files; i++) {
-    hdfsFileInfo* cur_info = &infos + (sizeof(hdfsFileInfo) * i);
+    hdfsFileInfo* cur_info = infos + i;
     rb_ary_push(file_infos, wrap_hdfsFileInfo(cur_info));
   }
+  hdfsFreeFileInfo(infos, num_files);
   return file_infos;
 }
 
@@ -202,7 +221,9 @@ VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
     rb_raise(e_does_not_exist, "File does not exist: %s", RSTRING_PTR(path));
     return Qnil;
   }
-  return wrap_hdfsFileInfo(info);
+  VALUE file_info = wrap_hdfsFileInfo(info);
+  hdfsFreeFileInfo(info, 1);
+  return file_info;
 }
 
 VALUE HDFS_File_System_set_replication(VALUE self, VALUE path, VALUE replication) {
@@ -214,6 +235,13 @@ VALUE HDFS_File_System_set_replication(VALUE self, VALUE path, VALUE replication
 }
 
 VALUE HDFS_File_System_cd(VALUE self, VALUE path) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  int success = hdfsSetWorkingDirectory(data->fs, RSTRING_PTR(path));
+  return success == 0 ? Qtrue : Qfalse;
+}
+
+VALUE HDFS_File_System_cwd(VALUE self) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   int success = hdfsSetWorkingDirectory(data->fs, RSTRING_PTR(path));
@@ -431,43 +459,43 @@ VALUE HDFS_File_Info_is_file(VALUE self) {
 VALUE HDFS_File_Info_last_access(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM((long int) file_info->info->mLastAccess);
+  return INT2NUM((long int) file_info->mLastAccess);
 }
 
 VALUE HDFS_File_Info_last_modified(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM((long int) file_info->info->mLastMod);
+  return INT2NUM((long int) file_info->mLastMod);
 }
 
 VALUE HDFS_File_Info_mode(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM(decimal_octal(file_info->info->mPermissions));
+  return INT2NUM(decimal_octal(file_info->mPermissions));
 }
 
 VALUE HDFS_File_Info_name(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return rb_str_new(file_info->info->mName, strlen(file_info->info->mName));
+  return rb_str_new(file_info->mName, strlen(file_info->mName));
 }
 
 VALUE HDFS_File_Info_owner(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return rb_str_new(file_info->info->mOwner, strlen(file_info->info->mOwner));
+  return rb_str_new(file_info->mOwner, strlen(file_info->mOwner));
 }
 
 VALUE HDFS_File_Info_replication(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM(file_info->info->mReplication);
+  return INT2NUM(file_info->mReplication);
 }
 
 VALUE HDFS_File_Info_size(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM(file_info->info->mSize);
+  return INT2NUM(file_info->mSize);
 }
 
 /*
@@ -491,6 +519,7 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "stat", HDFS_File_System_stat, 1);
   rb_define_method(c_file_system, "set_replication", HDFS_File_System_set_replication, 2);
   rb_define_method(c_file_system, "cd", HDFS_File_System_cd, 1);
+  rb_define_method(c_file_system, "cwd", HDFS_File_System_cwd, 0);
   rb_define_method(c_file_system, "chgrp", HDFS_File_System_chgrp, 2);
   rb_define_method(c_file_system, "chmod", HDFS_File_System_chmod, 2);
   rb_define_method(c_file_system, "chown", HDFS_File_System_chown, 2);
