@@ -39,15 +39,7 @@ typedef struct FileData {
 } FileData;
 
 typedef struct FileInfo {
-  char* mName;         /* the name of the file */
-  tTime mLastMod;      /* the last modification time for the file in seconds */
-  tOffset mSize;       /* the size of the file in bytes */
-  short mReplication;  /* the count of replicas */
-  tOffset mBlockSize;  /* the block size for the file */
-  char* mOwner;        /* the owner of the file */
-  char* mGroup;        /* the group associated with the file */
-  short mPermissions;  /* the permissions associated with the file */
-  tTime mLastAccess;   /* the last access time for the file in seconds */
+  hdfsFileInfo info;
 } FileInfo;
 
 void free_fs_data(FSData* data) {
@@ -255,11 +247,12 @@ VALUE HDFS_File_System_chgrp(VALUE self, VALUE path, VALUE group) {
       RSTRING_PTR(group));
   return success == 0 ? Qtrue : Qfalse;
 }
+
 VALUE HDFS_File_System_chmod(VALUE self, VALUE path, VALUE mode) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   int success = hdfsChmod(data->fs, RSTRING_PTR(path),
-      (short) RTEST(mode) ? NUM2INT(mode) : HDFS_DEFAULT_MODE);
+      (short) RTEST(mode) ? octal_decimal(NUM2INT(mode)) : HDFS_DEFAULT_MODE);
   return success == 0 ? Qtrue : Qfalse;
 }
 
@@ -293,6 +286,18 @@ VALUE HDFS_File_System_default_block_size(VALUE self) {
   return LONG2NUM(block_size);
 }
 
+VALUE HDFS_File_System_default_block_size_at_path(VALUE self, VALUE path) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  long block_size = hdfsGetDefaultBlockSizeAtPath(data->fs, RSTRING_PTR(path));
+  if (block_size < 0) {
+    rb_raise(e_dfs_exception,
+        "Error while retrieving default block size at path: %s", RSTRING_PTR(path));
+    return Qnil;
+  }
+  return LONG2NUM(block_size);
+}
+
 VALUE HDFS_File_System_used(VALUE self) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -302,6 +307,15 @@ VALUE HDFS_File_System_used(VALUE self) {
     return Qnil;
   }
   return LONG2NUM(used);
+}
+
+VALUE HDFS_File_System_utime(VALUE self, VALUE path, VALUE modified_time, VALUE access_time) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  int success = hdfsUtime(data->fs, RSTRING_PTR(path),
+      (tTime) RTEST(modified_time) ? NUM2INT(modified_time) : -1,
+      (tTime) RTEST(access_time) ? NUM2INT(access_time) : -1);
+  return success == 0 ? Qtrue : Qfalse;
 }
 
 /**
@@ -436,12 +450,12 @@ VALUE HDFS_File_Info_is_directory(VALUE self) {
   return Qfalse;
 }
 
-VALUE HDFS_File_Info_Directory_is_directory(VALUE self) {
-  return Qtrue;
-}
-
 VALUE HDFS_File_Info_is_file(VALUE self) {
   return Qfalse;
+}
+
+VALUE HDFS_File_Info_Directory_is_directory(VALUE self) {
+  return Qtrue;
 }
 
 VALUE HDFS_File_Info_File_is_file(VALUE self) {
@@ -518,7 +532,10 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "capacity", HDFS_File_System_capacity, 0);
   rb_define_method(c_file_system, "default_block_size",
       HDFS_File_System_default_block_size, 0);
+  rb_define_method(c_file_system, "default_block_size_at_path",
+      HDFS_File_System_default_block_size_at_path, 1);
   rb_define_method(c_file_system, "used", HDFS_File_System_used, 0);
+  rb_define_method(c_file_system, "utime", HDFS_File_System_utime, 3);
 
   c_file = rb_define_class_under(m_dfs, "File", rb_cObject);
   rb_define_method(c_file, "read", HDFS_File_read, 1);
