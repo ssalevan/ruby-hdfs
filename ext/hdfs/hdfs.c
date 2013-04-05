@@ -50,6 +50,10 @@ typedef struct FileInfo {
   tTime mLastAccess;   /* the last access time for the file in seconds */
 } FileInfo;
 
+/*
+ * Methods called upon freeing of objects.
+ */
+
 void free_fs_data(FSData* data) {
   if (data && data->fs != NULL) {
     hdfsDisconnect(data->fs);
@@ -70,6 +74,14 @@ void free_file_info(FileInfo* file_info) {
   }
 }
 
+/*
+ * Helper methods
+ */
+
+/*
+ * Copies an hdfsFileInfo struct into a Hadoop::DFS::FileInfo derivative
+ * object.
+ */
 VALUE wrap_hdfsFileInfo(hdfsFileInfo* info) {
   // Creates a FileInfo struct, populates it with information from the
   // supplied hdfsFileInfo struct.
@@ -84,7 +96,7 @@ VALUE wrap_hdfsFileInfo(hdfsFileInfo* info) {
   file_info->mPermissions = info->mPermissions;
   file_info->mLastAccess = info->mLastAccess;
   // Assigns FileInfo::Info or FileInfo::Directory class based upon the type of
-  // the variable.
+  // the file.
   switch(info->mKind) {
     case kObjectKindDirectory:
       return Data_Wrap_Struct(c_file_info_directory, NULL, free_file_info,
@@ -101,8 +113,7 @@ VALUE wrap_hdfsFileInfo(hdfsFileInfo* info) {
 
 // Borrowed from:
 // http://www.programiz.com/c-programming/examples/octal-decimal-convert
-
-/* Function to convert decimal to octal */
+/* Converts a decimal-formatted integer to an octal-formatted integer. */
 int decimal_octal(int n) {
   int rem, i=1, octal=0;
   while (n != 0) {
@@ -114,7 +125,7 @@ int decimal_octal(int n) {
   return octal;
 }
 
-/* Function to convert octal to decimal */
+/* Converts an octal-formatted integer to a decimal-formatted integer. */
 int octal_decimal(int n) {
   int decimal=0, i=0, rem;
   while (n != 0) {
@@ -168,21 +179,42 @@ VALUE HDFS_File_System_disconnect(VALUE self) {
   return Qnil;
 }
 
+/**
+ * call-seq:
+ *    hdfs.delete(path, recursive=false) -> retval
+ *
+ * Deletes the file at the supplied path, recursively if specified.  Returns
+ * True if successful, False if unsuccessful.
+ */
 VALUE HDFS_File_System_delete(VALUE self, VALUE path, VALUE recursive) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   int value = hdfsDelete(data->fs, RSTRING_PTR(path),
-      RTEST(recursive) ? NUM2INT(recursive) : HDFS_DEFAULT_RECURSIVE_DELETE);
+      CheckType(recursive, T_TRUE) ? 1 : HDFS_DEFAULT_RECURSIVE_DELETE);
   return value == 0 ? Qtrue : Qfalse;
 }
 
-VALUE HDFS_File_System_rename(VALUE self, VALUE current_path, VALUE destination_path) {
+/**
+ * call-seq:
+ *    hdfs.rename(from_path, to_path) -> retval
+ *
+ * Renames the file at the supplied path to the file at the destination path.
+ * Returns True if successful, False if unsuccessful.
+ */
+VALUE HDFS_File_System_rename(VALUE self, VALUE from_path, VALUE to_path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  int value = hdfsRename(data->fs, RSTRING_PTR(current_path), RSTRING_PTR(destination_path));
+  int value = hdfsRename(data->fs, RSTRING_PTR(from_path), RSTRING_PTR(to_path));
   return value == 0 ? Qtrue : Qfalse;
 }
 
+/**
+ * call-seq:
+ *    hdfs.exist(path) -> retval
+ *
+ * Checks if a file exists at the supplied path.  If file exists, returns True;
+ * if not, returns False.
+ */
 VALUE HDFS_File_System_exist(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -190,6 +222,13 @@ VALUE HDFS_File_System_exist(VALUE self, VALUE path) {
   return value == 0 ? Qtrue : Qfalse;
 }
 
+/**
+ * call-seq:
+ *    hdfs.create_directory(path) -> retval
+ *
+ * Checks if a file exists at the supplied path.  If file exists, returns True;
+ * if not, returns False.
+ */
 VALUE HDFS_File_System_create_directory(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -197,6 +236,14 @@ VALUE HDFS_File_System_create_directory(VALUE self, VALUE path) {
   return value == 0 ? Qtrue : Qfalse;
 }
 
+/**
+ * call-seq:
+ *    hdfs.list_directory(path) -> retval
+ *
+ * Lists the directory at the supplied path, returning an Array of
+ * Hadoop::DFS::FileInfo objects.  If the directory does not exist, raises
+ * a DoesNotExistError.
+ */
 VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -204,6 +251,11 @@ VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
   int num_files = 0;
   hdfsFileInfo* infos = hdfsListDirectory(data->fs, RSTRING_PTR(path),
       &num_files);
+  if (infos == NULL) {
+    rb_raise(e_does_not_exist, "Directory does not exist: %s",
+        RSTRING_PTR(path));
+    return Qnil;
+  }
   int i;
   for (i = 0; i < num_files; i++) {
     hdfsFileInfo* cur_info = infos + i;
@@ -213,6 +265,14 @@ VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
   return file_infos;
 }
 
+/**
+ * call-seq:
+ *    hdfs.stat(path) -> retval
+ *
+ * Stats the file or directory at the supplied path, returning a
+ * Hadoop::DFS:FileInfo object corresponding to it.  If the file or directory
+ * does not exist, raises a DoesNotExistError.
+ */
 VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -226,6 +286,13 @@ VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
   return file_info;
 }
 
+/**
+ * call-seq:
+ *    hdfs.set_replication(path, replication) -> retval
+ *
+ * Sets the replication of the following path to the supplied number of nodes
+ * it will be replicated against.  Returns True if successful; False if not.
+ */
 VALUE HDFS_File_System_set_replication(VALUE self, VALUE path, VALUE replication) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -234,6 +301,13 @@ VALUE HDFS_File_System_set_replication(VALUE self, VALUE path, VALUE replication
   return success == 0 ? Qtrue : Qfalse;
 }
 
+/**
+ * call-seq:
+ *    hdfs.cd(path) -> retval
+ *
+ * Changes the current working directory to the supplied path.  Returns True if
+ * successful; False if not.
+ */
 VALUE HDFS_File_System_cd(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -248,6 +322,13 @@ VALUE HDFS_File_System_cd(VALUE self, VALUE path) {
   return success == 0 ? Qtrue : Qfalse;
 }*/
 
+/**
+ * call-seq:
+ *    hdfs.chgrp(path, group) -> retval
+ *
+ * Changes the group of the supplied path.  Returns True if successful; False
+ * if not.
+ */
 VALUE HDFS_File_System_chgrp(VALUE self, VALUE path, VALUE group) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -256,6 +337,13 @@ VALUE HDFS_File_System_chgrp(VALUE self, VALUE path, VALUE group) {
   return success == 0 ? Qtrue : Qfalse;
 }
 
+/**
+ * call-seq:
+ *    hdfs.chgrp(path, mode) -> retval
+ *
+ * Changes the mode of the supplied path.  Returns True if successful; False
+ * if not.
+ */
 VALUE HDFS_File_System_chmod(VALUE self, VALUE path, VALUE mode) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -264,6 +352,13 @@ VALUE HDFS_File_System_chmod(VALUE self, VALUE path, VALUE mode) {
   return success == 0 ? Qtrue : Qfalse;
 }
 
+/**
+ * call-seq:
+ *    hdfs.chown(path, owner) -> retval
+ *
+ * Changes the owner of the supplied path.  Returns True if successful; False
+ * if not.
+ */
 VALUE HDFS_File_System_chown(VALUE self, VALUE path, VALUE owner) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -272,6 +367,67 @@ VALUE HDFS_File_System_chown(VALUE self, VALUE path, VALUE owner) {
   return success == 0 ? Qtrue : Qfalse;
 }
 
+/**
+ * call-seq:
+ *    hdfs.copy(from_path, to_path, to_fs=nil) -> retval
+ *
+ * Copies the file at HDFS location from_path to HDFS location to_path.  If
+ * to_fs is specified, copies to this HDFS over the current HDFS.  If
+ * successful, returns true; otherwise, returns false.
+ */
+VALUE HDFS_File_System_copy(VALUE self, VALUE from_path, VALUE to_path, VALUE to_fs) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  hdfsFS destFS = data->fs;
+  if (RTEST(to_fs)) {
+    if (CLASS_OF(to_fs) == c_file_system) {
+      FSData* destFSData = NULL;
+      Data_Get_Struct(to_fs, FSData, destFSData);
+      destFS = destFSData->fs;
+    } else {
+      rb_raise(rb_eArgError, "to_fs must be of type Hadoop::DFS::FileSystem");
+      return Qnil;
+    }
+  }
+  int success = hdfsCopy(data->fs, RSTRING_PTR(from_path), destFS,
+      RSTRING_PTR(to_fs));
+  return success == 0 ? Qtrue : Qfalse;
+}
+
+/**
+ * call-seq:
+ *    hdfs.move(from_path, to_path, to_fs=nil) -> retval
+ *
+ * Moves the file at HDFS location from_path to HDFS location to_path.  If
+ * to_fs is specified, moves to this HDFS over the current HDFS.  If
+ * successful, returns true; otherwise, returns false.
+ */
+VALUE HDFS_File_System_move(VALUE self, VALUE from_path, VALUE to_path, VALUE to_fs) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  hdfsFS destFS = data->fs;
+  if (RTEST(to_fs)) {
+    if (CLASS_OF(to_fs) == c_file_system) {
+      FSData* destFSData = NULL;
+      Data_Get_Struct(to_fs, FSData, destFSData);
+      destFS = destFSData->fs;
+    } else {
+      rb_raise(rb_eArgError, "to_fs must be of type Hadoop::DFS::FileSystem");
+      return Qnil;
+    }
+  }
+  int success = hdfsMove(data->fs, RSTRING_PTR(from_path), destFS,
+      RSTRING_PTR(to_fs));
+  return success == 0 ? Qtrue : Qfalse;
+}
+
+/**
+ * call-seq:
+ *    hdfs.capacity -> retval
+ *
+ * Returns the capacity of this HDFS file system in bytes, raising a
+ * DFSException if this was unsuccessful.
+ */
 VALUE HDFS_File_System_capacity(VALUE self) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -283,6 +439,13 @@ VALUE HDFS_File_System_capacity(VALUE self) {
   return LONG2NUM(capacity);
 }
 
+/**
+ * call-seq:
+ *    hdfs.capacity -> retval
+ *
+ * Returns the default block size of this HDFS file system in bytes, raising a
+ * DFSException if this was unsuccessful.
+ */
 VALUE HDFS_File_System_default_block_size(VALUE self) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -306,6 +469,13 @@ VALUE HDFS_File_System_default_block_size_at_path(VALUE self, VALUE path) {
   return LONG2NUM(block_size);
 }
 
+/**
+ * call-seq:
+ *    hdfs.used -> retval
+ *
+ * Returns the bytes currently in use by this filesystem, raising a
+ * DFSException if unsuccessful.
+ */
 VALUE HDFS_File_System_used(VALUE self) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -317,6 +487,13 @@ VALUE HDFS_File_System_used(VALUE self) {
   return LONG2NUM(used);
 }
 
+/**
+ * call-seq:
+ *    hdfs.utime(path, modified_time=nil, access_time=nil) -> retval
+ *
+ * Changes the last modified and/or last access time for the supplied file.
+ * Returns true if successful; false if not.
+ */
 VALUE HDFS_File_System_utime(VALUE self, VALUE path, VALUE modified_time, VALUE access_time) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -328,9 +505,10 @@ VALUE HDFS_File_System_utime(VALUE self, VALUE path, VALUE modified_time, VALUE 
 
 /**
  * call-seq:
- *    hdfs.open -> file
+ *    hdfs.open(path, mode, options = {}) -> file
  *
- * Opens a file.
+ * Opens a file.  If the file cannot be opened, raises a CouldNotOpenError;
+ * otherwise, returns a Hadoop::DFS::File object corresponding to the file.
  */
 VALUE HDFS_File_System_open(VALUE self, VALUE path, VALUE mode, VALUE options) {
   FSData* data = NULL;
@@ -442,22 +620,48 @@ VALUE HDFS_File_close(VALUE self) {
  * HDFS File Info interface
  */
 
+/**
+ * call-seq:
+ *    file_info.block_size -> retval
+ *
+ * Returns the block size of the file described by this object.
+ */
 VALUE HDFS_File_Info_block_size(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
   return INT2NUM(file_info->mBlockSize);
 }
 
+/**
+ * call-seq:
+ *    file_info.group -> retval
+ *
+ * Returns the group of the file described by this object.
+ */
 VALUE HDFS_File_Info_group(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
   return rb_str_new(file_info->mGroup, strlen(file_info->mGroup));
 }
 
+/**
+ * call-seq:
+ *    file_info.is_directory? -> retval
+ *
+ * Returns True if the file described by this object is a directory; otherwise,
+ * returns False.
+ */
 VALUE HDFS_File_Info_is_directory(VALUE self) {
   return Qfalse;
 }
 
+/**
+ * call-seq:
+ *    file_info.is_file? -> retval
+ *
+ * Returns True if the file described by this object is a file; otherwise,
+ * returns False.
+ */
 VALUE HDFS_File_Info_is_file(VALUE self) {
   return Qfalse;
 }
@@ -470,18 +674,39 @@ VALUE HDFS_File_Info_File_is_file(VALUE self) {
   return Qtrue;
 }
 
+/**
+ * call-seq:
+ *    file_info.last_access -> retval
+ *
+ * Returns the time of last access as an Integer representing seconds since the
+ * epoch.
+ */
 VALUE HDFS_File_Info_last_access(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
   return INT2NUM((long int) file_info->mLastAccess);
 }
 
+/**
+ * call-seq:
+ *    file_info.last_modified -> retval
+ *
+ * Returns the time of last modification as an Integer representing seconds
+ * since the epoch for the file
+ */
 VALUE HDFS_File_Info_last_modified(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
   return INT2NUM((long int) file_info->mLastMod);
 }
 
+/**
+ * call-seq:
+ *    file_info.last_modified -> retval
+ *
+ * Returns the time of last modification as an Integer representing seconds
+ * since the epoch.
+ */
 VALUE HDFS_File_Info_mode(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
@@ -537,11 +762,13 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "chgrp", HDFS_File_System_chgrp, 2);
   rb_define_method(c_file_system, "chmod", HDFS_File_System_chmod, 2);
   rb_define_method(c_file_system, "chown", HDFS_File_System_chown, 2);
+  rb_define_method(c_file_system, "copy", HDFS_File_System_copy, 2);
   rb_define_method(c_file_system, "capacity", HDFS_File_System_capacity, 0);
   rb_define_method(c_file_system, "default_block_size",
       HDFS_File_System_default_block_size, 0);
   rb_define_method(c_file_system, "default_block_size_at_path",
       HDFS_File_System_default_block_size_at_path, 1);
+  rb_define_method(c_file_system, "move", HDFS_File_System_move, 2);
   rb_define_method(c_file_system, "used", HDFS_File_System_used, 0);
   rb_define_method(c_file_system, "utime", HDFS_File_System_utime, 3);
 
