@@ -18,7 +18,7 @@ static VALUE e_file_error;
 static VALUE e_could_not_open;
 static VALUE e_does_not_exist;
 
-static const HDFS_DEFAULT_BLOCK_SIZE            = 134217728;
+static const int32_t HDFS_DEFAULT_BLOCK_SIZE    = 134217728;
 static const int16_t HDFS_DEFAULT_REPLICATION   = 3;
 static const short HDFS_DEFAULT_MODE            = 0644;
 static const char* HDFS_DEFAULT_HOST            = "localhost";
@@ -776,10 +776,12 @@ VALUE HDFS_File_Info_to_s(VALUE self) {
       rb_funcall(self, rb_intern("class"), 0),
       rb_intern("to_s"), 0);
   char* output;
-  VALUE string_value = rb_str_new();
+  VALUE string_value = rb_str_new2("");
   // If asprintf was successful, creates a Ruby String.
-  if (asprintf(&output, "#<%s: %s, mode=%s, owner=%s, group=%s>",
-          RSTRING_PTR(class_string), name, mode, owner, group) >= 0) {
+  if (asprintf(&output, "#<%s: %s, mode=%d, owner=%s, group=%s>",
+          RSTRING_PTR(class_string), file_info->mName,
+          decimal_octal(file_info->mPermissions), file_info->mOwner,
+          file_info->mGroup) >= 0) {
     string_value = rb_str_new(output, strlen(output));
   }
   free(output);
@@ -843,7 +845,7 @@ void Init_hdfs() {
   rb_define_method(c_file_info, "owner", HDFS_File_Info_owner, 0);
   rb_define_method(c_file_info, "replication", HDFS_File_Info_replication, 0);
   rb_define_method(c_file_info, "size", HDFS_File_Info_size, 0);
-  rb_define_method(c_file_into, "to_s", HDFS_File_Info_to_s, 0);
+  rb_define_method(c_file_info, "to_s", HDFS_File_Info_to_s, 0);
 
   c_file_info_file = rb_define_class_under(c_file_info, "File", c_file_info);
   rb_define_method(c_file_info_file, "is_file?", HDFS_File_Info_File_is_file, 0);
