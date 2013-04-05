@@ -713,28 +713,77 @@ VALUE HDFS_File_Info_mode(VALUE self) {
   return INT2NUM(decimal_octal(file_info->mPermissions));
 }
 
+/**
+ * call-seq:
+ *    file_info.name -> retval
+ *
+ * Returns the name of the file as a String.
+ */
 VALUE HDFS_File_Info_name(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
   return rb_str_new(file_info->mName, strlen(file_info->mName));
 }
 
+/**
+ * call-seq:
+ *    file_info.owner -> retval
+ *
+ * Returns the owner of the file as a String.
+ */
 VALUE HDFS_File_Info_owner(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
   return rb_str_new(file_info->mOwner, strlen(file_info->mOwner));
 }
 
+/**
+ * call-seq:
+ *    file_info.replication -> retval
+ *
+ * Returns the replication factor of the file as an Integer.
+ */
 VALUE HDFS_File_Info_replication(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
   return INT2NUM(file_info->mReplication);
 }
 
+/**
+ * call-seq:
+ *    file_info.name -> retval
+ *
+ * Returns the size of the file as an Integer.
+ */
 VALUE HDFS_File_Info_size(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
   return INT2NUM(file_info->mSize);
+}
+
+/**
+ * call-seq:
+ *    file_info.to_s -> retval
+ *
+ * Returns a human-readable representation of a Hadoop::DFS::FileSystem object
+ * as a String.
+ */
+VALUE HDFS_File_Info_to_s(VALUE self) {
+  FileInfo* file_info = NULL;
+  Data_Get_Struct(self, FileInfo, file_info);
+  // Introspects current class, returns it as a String.
+  VALUE class_string = rb_funcall(
+      rb_funcall(self, rb_intern("class"), 0),
+      rb_intern("to_s"), 0);
+  char* output;
+  VALUE string_value = rb_str_new();
+  // If asprintf was successful, creates a Ruby String.
+  if (asprintf(&output, "#<%s: %s, mode=%s, owner=%s, group=%s>",
+          RSTRING_PTR(class_string), name, mode, owner, group) >= 0) {
+    string_value = rb_str_new(output, strlen(output));
+  }
+  free(output);
+  return string_value;
 }
 
 /*
@@ -794,6 +843,7 @@ void Init_hdfs() {
   rb_define_method(c_file_info, "owner", HDFS_File_Info_owner, 0);
   rb_define_method(c_file_info, "replication", HDFS_File_Info_replication, 0);
   rb_define_method(c_file_info, "size", HDFS_File_Info_size, 0);
+  rb_define_method(c_file_into, "to_s", HDFS_File_Info_to_s, 0);
 
   c_file_info_file = rb_define_class_under(c_file_info, "File", c_file_info);
   rb_define_method(c_file_info_file, "is_file?", HDFS_File_Info_File_is_file, 0);
