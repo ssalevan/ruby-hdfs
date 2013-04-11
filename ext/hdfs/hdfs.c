@@ -24,7 +24,7 @@ static const short HDFS_DEFAULT_MODE             = 0644;
 static const char* HDFS_DEFAULT_HOST             = "localhost";
 static const int HDFS_DEFAULT_RECURSIVE_DELETE   = 0;
 static const int HDFS_DEFAULT_PATH_STRING_LENGTH = 1024;
-static const int HDFS_DEFAULT_PORT               = 9000;
+static const int HDFS_DEFAULT_PORT               = 8020;
 
 /*
  * Data structs
