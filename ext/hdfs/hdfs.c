@@ -126,15 +126,12 @@ VALUE wrap_hdfsFileInfo(hdfsFileInfo* info) {
   // the file.
   switch(info->mKind) {
     case kObjectKindDirectory:
-      hdfsFreeFileInfo(info, 1);
       return Data_Wrap_Struct(c_file_info_directory, NULL, free_file_info,
           file_info);
     case kObjectKindFile:
-      hdfsFreeFileInfo(info, 1);
       return Data_Wrap_Struct(c_file_info_file, NULL, free_file_info,
           file_info);
     default:
-      hdfsFreeFileInfo(info, 1);
       rb_raise(e_dfs_exception, "File was not a file or directory: %s",
           RSTRING_PTR(info->mName));
   }
@@ -265,6 +262,7 @@ VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
     hdfsFileInfo* cur_info = infos + i;
     rb_ary_push(file_infos, wrap_hdfsFileInfo(cur_info));
   }
+  hdfsFreeFileInfo(infos, num_files);
   return file_infos;
 }
 
@@ -285,6 +283,7 @@ VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
     return Qnil;
   }
   VALUE file_info = wrap_hdfsFileInfo(info);
+  hdfsFreeFileInfo(info, 1);
   return file_info;
 }
 
