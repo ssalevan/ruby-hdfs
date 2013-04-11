@@ -40,13 +40,13 @@ typedef struct FileData {
 } FileData;
 
 typedef struct FileInfo {
-  VALUE mName;         /* the name of the file */
+  char* mName;         /* the name of the file */
   tTime mLastMod;      /* the last modification time for the file in seconds */
-  tOffset mSize;         /* the size of the file in bytes */
+  tOffset mSize;       /* the size of the file in bytes */
   short mReplication;  /* the count of replicas */
-  tOffset mBlockSize;    /* the block size for the file */
-  VALUE mOwner;        /* the owner of the file */
-  VALUE mGroup;        /* the group associated with the file */
+  tOffset mBlockSize;  /* the block size for the file */
+  char* mOwner;        /* the owner of the file */
+  char* mGroup;        /* the group associated with the file */
   short mPermissions;  /* the permissions associated with the file */
   tTime mLastAccess;   /* the last access time for the file in seconds */
 } FileInfo;
@@ -113,13 +113,13 @@ VALUE wrap_hdfsFileInfo(hdfsFileInfo* info) {
   // Creates a FileInfo struct, populates it with information from the
   // supplied hdfsFileInfo struct.
   FileInfo* file_info = ALLOC_N(FileInfo, 1);
-  file_info->mName = rb_str_new(info->mName, strlen(info->mName));
+  file_info->mName = strdup(info->mName);
   file_info->mLastMod = info->mLastMod;
   file_info->mSize = info->mSize;
   file_info->mReplication = info->mReplication;
   file_info->mBlockSize = info->mBlockSize;
-  file_info->mOwner = rb_str_new(info->mOwner, strlen(info->mOwner));
-  file_info->mGroup = rb_str_new(info->mGroup, strlen(info->mGroup));
+  file_info->mOwner = strdup(info->mOwner);
+  file_info->mGroup = strdup(info->mGroup);
   file_info->mPermissions = info->mPermissions;
   file_info->mLastAccess = info->mLastAccess;
   // Assigns FileInfo::Info or FileInfo::Directory class based upon the type of
@@ -689,7 +689,7 @@ VALUE HDFS_File_close(VALUE self) {
 VALUE HDFS_File_Info_block_size(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return file_info->mBlockSize;
+  return INT2NUM(file_info->mBlockSize);
 }
 
 /**
@@ -701,7 +701,7 @@ VALUE HDFS_File_Info_block_size(VALUE self) {
 VALUE HDFS_File_Info_group(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return file_info->mGroup;
+  return rb_str_new(file_info->mGroup, strlen(file_info->mGroup));
 }
 
 /**
@@ -739,7 +739,7 @@ VALUE HDFS_File_Info_File_is_file(VALUE self) {
  *    file_info.last_access -> retval
  *
  * Returns the time of last access as an Integer representing seconds since the
- * Unix epoch.
+ * epoch.
  */
 VALUE HDFS_File_Info_last_access(VALUE self) {
   FileInfo* file_info = NULL;
@@ -752,7 +752,7 @@ VALUE HDFS_File_Info_last_access(VALUE self) {
  *    file_info.last_modified -> retval
  *
  * Returns the time of last modification as an Integer representing seconds
- * since the Unix epoch for the file it represents.
+ * since the epoch for the file
  */
 VALUE HDFS_File_Info_last_modified(VALUE self) {
   FileInfo* file_info = NULL;
@@ -765,7 +765,7 @@ VALUE HDFS_File_Info_last_modified(VALUE self) {
  *    file_info.last_modified -> retval
  *
  * Returns the time of last modification as an Integer representing seconds
- * since the Unix epoch for the file it represents.
+ * since the epoch.
  */
 VALUE HDFS_File_Info_mode(VALUE self) {
   FileInfo* file_info = NULL;
@@ -782,7 +782,7 @@ VALUE HDFS_File_Info_mode(VALUE self) {
 VALUE HDFS_File_Info_name(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return file_info->mName;
+  return rb_str_new(file_info->mName, strlen(file_info->mName));
 }
 
 /**
@@ -794,7 +794,7 @@ VALUE HDFS_File_Info_name(VALUE self) {
 VALUE HDFS_File_Info_owner(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return file_info->mOwner;
+  return rb_str_new(file_info->mOwner, strlen(file_info->mOwner));
 }
 
 /**
@@ -832,15 +832,16 @@ VALUE HDFS_File_Info_to_s(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
   // Introspects current class, returns it as a String.
-  VALUE class_string = rb_funcall(rb_funcall(self, rb_intern("class"), 0),
+  VALUE class_string = rb_funcall(
+      rb_funcall(self, rb_intern("class"), 0),
       rb_intern("to_s"), 0);
   char* output;
   VALUE string_value = rb_str_new2("");
   // If asprintf was successful, creates a Ruby String.
   if (asprintf(&output, "#<%s: %s, mode=%d, owner=%s, group=%s>",
-          RSTRING_PTR(class_string), RSTRING_PTR(file_info->mName),
-          NUM2INT(file_info->mPermissions), RSTRING_PTR(file_info->mOwner),
-          RSTRING_PTR(file_info->mGroup)) >= 0) {
+          RSTRING_PTR(class_string), file_info->mName,
+          decimal_octal(file_info->mPermissions), file_info->mOwner,
+          file_info->mGroup) >= 0) {
     string_value = rb_str_new(output, strlen(output));
   }
   free(output);
