@@ -18,12 +18,13 @@ static VALUE e_file_error;
 static VALUE e_could_not_open;
 static VALUE e_does_not_exist;
 
-static const int32_t HDFS_DEFAULT_BLOCK_SIZE    = 134217728;
-static const int16_t HDFS_DEFAULT_REPLICATION   = 3;
-static const short HDFS_DEFAULT_MODE            = 0644;
-static const char* HDFS_DEFAULT_HOST            = "localhost";
-static const int HDFS_DEFAULT_RECURSIVE_DELETE  = 0;
-static const int HDFS_DEFAULT_PORT              = 9000;
+static const int32_t HDFS_DEFAULT_BLOCK_SIZE     = 134217728;
+static const int16_t HDFS_DEFAULT_REPLICATION    = 3;
+static const short HDFS_DEFAULT_MODE             = 0644;
+static const char* HDFS_DEFAULT_HOST             = "localhost";
+static const int HDFS_DEFAULT_RECURSIVE_DELETE   = 0;
+static const int HDFS_DEFAULT_PATH_STRING_LENGTH = 1024;
+static const int HDFS_DEFAULT_PORT               = 9000;
 
 /*
  * Data structs
@@ -39,15 +40,15 @@ typedef struct FileData {
 } FileData;
 
 typedef struct FileInfo {
-  char* mName;         /* the name of the file */
-  tTime mLastMod;      /* the last modification time for the file in seconds */
-  tOffset mSize;       /* the size of the file in bytes */
-  short mReplication;  /* the count of replicas */
-  tOffset mBlockSize;  /* the block size for the file */
-  char* mOwner;        /* the owner of the file */
-  char* mGroup;        /* the group associated with the file */
-  short mPermissions;  /* the permissions associated with the file */
-  tTime mLastAccess;   /* the last access time for the file in seconds */
+  VALUE mName;         /* the name of the file */
+  VALUE mLastMod;      /* the last modification time for the file in seconds */
+  VALUE mSize;         /* the size of the file in bytes */
+  VALUE mReplication;  /* the count of replicas */
+  VALUE mBlockSize;    /* the block size for the file */
+  VALUE mOwner;        /* the owner of the file */
+  VALUE mGroup;        /* the group associated with the file */
+  VALUE mPermissions;  /* the permissions associated with the file */
+  VALUE mLastAccess;   /* the last access time for the file in seconds */
 } FileInfo;
 
 /*
@@ -75,41 +76,8 @@ void free_file_info(FileInfo* file_info) {
 }
 
 /*
- * Helper methods
+ * Helper functions
  */
-
-/*
- * Copies an hdfsFileInfo struct into a Hadoop::DFS::FileInfo derivative
- * object.
- */
-VALUE wrap_hdfsFileInfo(hdfsFileInfo* info) {
-  // Creates a FileInfo struct, populates it with information from the
-  // supplied hdfsFileInfo struct.
-  FileInfo* file_info = ALLOC_N(FileInfo, 1);
-  file_info->mName = strdup(info->mName);
-  file_info->mLastMod = info->mLastMod;
-  file_info->mSize = info->mSize;
-  file_info->mReplication = info->mReplication;
-  file_info->mBlockSize = info->mBlockSize;
-  file_info->mOwner = strdup(info->mOwner);
-  file_info->mGroup = strdup(info->mGroup);
-  file_info->mPermissions = info->mPermissions;
-  file_info->mLastAccess = info->mLastAccess;
-  // Assigns FileInfo::Info or FileInfo::Directory class based upon the type of
-  // the file.
-  switch(info->mKind) {
-    case kObjectKindDirectory:
-      return Data_Wrap_Struct(c_file_info_directory, NULL, free_file_info,
-          file_info);
-    case kObjectKindFile:
-      return Data_Wrap_Struct(c_file_info_file, NULL, free_file_info,
-          file_info);
-    default:
-      rb_raise(e_dfs_exception, "File was not a file or directory: %s",
-          RSTRING_PTR(info->mName));
-  }
-  return Qnil;
-}
 
 // Borrowed from:
 // http://www.programiz.com/c-programming/examples/octal-decimal-convert
@@ -135,6 +103,42 @@ int octal_decimal(int n) {
     ++i;
   }
   return decimal;
+}
+
+/*
+ * Copies an hdfsFileInfo struct into a Hadoop::DFS::FileInfo derivative
+ * object.
+ */
+VALUE wrap_hdfsFileInfo(hdfsFileInfo* info) {
+  // Creates a FileInfo struct, populates it with information from the
+  // supplied hdfsFileInfo struct.
+  FileInfo* file_info = ALLOC_N(FileInfo, 1);
+  file_info->mName = rb_str_new(info->mName, strlen(info->mName));
+  file_info->mLastMod = LONG2NUM(info->mLastMod);
+  file_info->mSize = LONG2NUM(info->mSize);
+  file_info->mReplication = INT2NUM(info->mReplication);
+  file_info->mBlockSize = LONG2NUM(info->mBlockSize);
+  file_info->mOwner = rb_str_new(info->mOwner, strlen(info->mOwner));
+  file_info->mGroup = rb_str_new(info->mGroup, strlen(info->mGroup));
+  file_info->mPermissions = INT2NUM(decimal_octal(info->mPermissions));
+  file_info->mLastAccess = LONG2NUM(info->mLastAccess);
+  // Assigns FileInfo::Info or FileInfo::Directory class based upon the type of
+  // the file.
+  switch(info->mKind) {
+    case kObjectKindDirectory:
+      hdfsFreeFileInfo(info, 1);
+      return Data_Wrap_Struct(c_file_info_directory, NULL, free_file_info,
+          file_info);
+    case kObjectKindFile:
+      hdfsFreeFileInfo(info, 1);
+      return Data_Wrap_Struct(c_file_info_file, NULL, free_file_info,
+          file_info);
+    default:
+      hdfsFreeFileInfo(info, 1);
+      rb_raise(e_dfs_exception, "File was not a file or directory: %s",
+          RSTRING_PTR(info->mName));
+  }
+  return Qnil;
 }
 
 /*
@@ -261,7 +265,6 @@ VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
     hdfsFileInfo* cur_info = infos + i;
     rb_ary_push(file_infos, wrap_hdfsFileInfo(cur_info));
   }
-  hdfsFreeFileInfo(infos, num_files);
   return file_infos;
 }
 
@@ -282,7 +285,6 @@ VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
     return Qnil;
   }
   VALUE file_info = wrap_hdfsFileInfo(info);
-  hdfsFreeFileInfo(info, 1);
   return file_info;
 }
 
@@ -457,6 +459,13 @@ VALUE HDFS_File_System_default_block_size(VALUE self) {
   return LONG2NUM(block_size);
 }
 
+/**
+ * call-seq:
+ *    hdfs.default_block_size_at_path(path) -> default_block_size
+ *
+ * Returns the default block size at the supplied HDFS path, raising a
+ * DFSException if this was unsuccessful.
+ */
 VALUE HDFS_File_System_default_block_size_at_path(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -491,8 +500,8 @@ VALUE HDFS_File_System_used(VALUE self) {
  * call-seq:
  *    hdfs.utime(path, modified_time=nil, access_time=nil) -> retval
  *
- * Changes the last modified and/or last access time for the supplied file.
- * Returns true if successful; false if not.
+ * Changes the last modified and/or last access time in seconds since the Unix
+ * epoch for the supplied file.  Returns true if successful; false if not.
  */
 VALUE HDFS_File_System_utime(VALUE self, VALUE path, VALUE modified_time, VALUE access_time) {
   FSData* data = NULL;
@@ -546,6 +555,14 @@ VALUE HDFS_File_System_open(VALUE self, VALUE path, VALUE mode, VALUE options) {
  * File interface
  */
 
+/**
+ * call-seq:
+ *    file.read(length) -> retval
+ *
+ * Reads the number of bytes specified by length from the current file object,
+ * returning the bytes read as a String.  If this fails, raises a
+ * FileError.
+ */ 
 VALUE HDFS_File_read(VALUE self, VALUE length) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
@@ -558,6 +575,13 @@ VALUE HDFS_File_read(VALUE self, VALUE length) {
   return rb_tainted_str_new2(buffer);
 }
 
+/**
+ * call-seq:
+ *    file.write(bytes) -> num_bytes_written
+ *
+ * Writes the string specified by bytes to the current file object, returning
+ * the number of bytes read as an Integer.  If this fails, raises a FileError.
+ */
 VALUE HDFS_File_write(VALUE self, VALUE bytes) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
@@ -568,6 +592,13 @@ VALUE HDFS_File_write(VALUE self, VALUE bytes) {
   return INT2NUM(bytes_written);
 }
 
+/**
+ * call-seq:
+ *    file.tell -> current_position
+ *
+ * Returns the current byte position in the file as an Integer.  If this fails,
+ * raises a FileError.
+ */
 VALUE HDFS_File_tell(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
@@ -578,13 +609,31 @@ VALUE HDFS_File_tell(VALUE self) {
   return INT2NUM(offset);
 }
 
+/**
+ * call-seq:
+ *    file.seek(offset) -> success
+ *
+ * Seeks the file pointer to the supplied offset.  If this fails, raises a
+ * FileError.
+ */
 VALUE HDFS_File_seek(VALUE self, VALUE offset) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
   int result = hdfsSeek(data->fs, data->file, NUM2INT(offset));
-  return result == 0 ? Qtrue : Qfalse;
+  if (result != 0) {
+    rb_raise(e_file_error, "Failed to seek to position %d", NUM2INT(offset));
+  }
+  return Qtrue;
 }
 
+/**
+ * call-seq:
+ *    file.flush -> success
+ *
+ * Flushes all buffers currently being written to this file.  When this
+ * finishes, new readers will see the data written.  If this fails, raises a
+ * FileError.
+ */
 VALUE HDFS_File_flush(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
@@ -592,9 +641,16 @@ VALUE HDFS_File_flush(VALUE self) {
   if (result != 0) {
     rb_raise(e_file_error, "Flush failed");
   }
-  return Qnil;
+  return Qtrue;
 }
 
+/**
+ * call-seq:
+ *    file.available -> available_bytes
+ *
+ * Returns the number of bytes that can be read from this file without
+ * blocking.  If this fails, raises a FileError.
+ */
 VALUE HDFS_File_available(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
@@ -605,7 +661,12 @@ VALUE HDFS_File_available(VALUE self) {
   return INT2NUM(result);
 }
 
-
+/**
+ * call-seq:
+ *    file.close -> success
+ *
+ * Closes the current file.  If this fails, raises a FileError.
+ */
 VALUE HDFS_File_close(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
@@ -613,7 +674,7 @@ VALUE HDFS_File_close(VALUE self) {
     hdfsCloseFile(data->fs, data->file);
     data->file = NULL;
   }
-  return Qnil;
+  return Qtrue;
 }
 
 /**
@@ -629,7 +690,7 @@ VALUE HDFS_File_close(VALUE self) {
 VALUE HDFS_File_Info_block_size(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM(file_info->mBlockSize);
+  return file_info->mBlockSize;
 }
 
 /**
@@ -641,7 +702,7 @@ VALUE HDFS_File_Info_block_size(VALUE self) {
 VALUE HDFS_File_Info_group(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return rb_str_new(file_info->mGroup, strlen(file_info->mGroup));
+  return file_info->mGroup;
 }
 
 /**
@@ -679,12 +740,12 @@ VALUE HDFS_File_Info_File_is_file(VALUE self) {
  *    file_info.last_access -> retval
  *
  * Returns the time of last access as an Integer representing seconds since the
- * epoch.
+ * Unix epoch.
  */
 VALUE HDFS_File_Info_last_access(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM((long int) file_info->mLastAccess);
+  return file_info->mLastAccess;
 }
 
 /**
@@ -692,12 +753,12 @@ VALUE HDFS_File_Info_last_access(VALUE self) {
  *    file_info.last_modified -> retval
  *
  * Returns the time of last modification as an Integer representing seconds
- * since the epoch for the file
+ * since the Unix epoch for the file it represents.
  */
 VALUE HDFS_File_Info_last_modified(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM((long int) file_info->mLastMod);
+  return file_info->mLastMod;
 }
 
 /**
@@ -705,12 +766,12 @@ VALUE HDFS_File_Info_last_modified(VALUE self) {
  *    file_info.last_modified -> retval
  *
  * Returns the time of last modification as an Integer representing seconds
- * since the epoch.
+ * since the Unix epoch for the file it represents.
  */
 VALUE HDFS_File_Info_mode(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM(decimal_octal(file_info->mPermissions));
+  return file_info->mPermissions;
 }
 
 /**
@@ -722,7 +783,7 @@ VALUE HDFS_File_Info_mode(VALUE self) {
 VALUE HDFS_File_Info_name(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return rb_str_new(file_info->mName, strlen(file_info->mName));
+  return file_info->mName;
 }
 
 /**
@@ -734,7 +795,7 @@ VALUE HDFS_File_Info_name(VALUE self) {
 VALUE HDFS_File_Info_owner(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return rb_str_new(file_info->mOwner, strlen(file_info->mOwner));
+  return file_info->mOwner;
 }
 
 /**
@@ -746,7 +807,7 @@ VALUE HDFS_File_Info_owner(VALUE self) {
 VALUE HDFS_File_Info_replication(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM(file_info->mReplication);
+  return file_info->mReplication;
 }
 
 /**
@@ -758,7 +819,7 @@ VALUE HDFS_File_Info_replication(VALUE self) {
 VALUE HDFS_File_Info_size(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return INT2NUM(file_info->mSize);
+  return file_info->mSize;
 }
 
 /**
@@ -772,16 +833,15 @@ VALUE HDFS_File_Info_to_s(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
   // Introspects current class, returns it as a String.
-  VALUE class_string = rb_funcall(
-      rb_funcall(self, rb_intern("class"), 0),
+  VALUE class_string = rb_funcall(rb_funcall(self, rb_intern("class"), 0),
       rb_intern("to_s"), 0);
   char* output;
   VALUE string_value = rb_str_new2("");
   // If asprintf was successful, creates a Ruby String.
   if (asprintf(&output, "#<%s: %s, mode=%d, owner=%s, group=%s>",
-          RSTRING_PTR(class_string), file_info->mName,
-          decimal_octal(file_info->mPermissions), file_info->mOwner,
-          file_info->mGroup) >= 0) {
+          RSTRING_PTR(class_string), RSTRING_PTR(file_info->mName),
+          NUM2INT(file_info->mPermissions), RSTRING_PTR(file_info->mOwner),
+          RSTRING_PTR(file_info->mGroup)) >= 0) {
     string_value = rb_str_new(output, strlen(output));
   }
   free(output);
