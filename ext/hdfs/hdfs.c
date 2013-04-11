@@ -329,8 +329,10 @@ VALUE HDFS_File_System_cd(VALUE self, VALUE path) {
 VALUE HDFS_File_System_cwd(VALUE self) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  char* cur_dir = new char[HDFS_DEFAULT_PATH_STRING_LENGTH];
-  int success = hdfsGetWorkingDirectory(data->fs, cur_dir, HDFS_DEFAULT_PATH_STRING_LENGTH);
+  char* cur_dir = (char *) malloc(
+      sizeof(char) * HDFS_DEFAULT_PATH_STRING_LENGTH);
+  int success = hdfsGetWorkingDirectory(data->fs, cur_dir,
+      HDFS_DEFAULT_PATH_STRING_LENGTH);
   VALUE ruby_cur_dir = rb_str_new(cur_dir);
   free(cur_dir);
   return ruby_cur_dir;
