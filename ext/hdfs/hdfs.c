@@ -41,14 +41,14 @@ typedef struct FileData {
 
 typedef struct FileInfo {
   VALUE mName;         /* the name of the file */
-  VALUE mLastMod;      /* the last modification time for the file in seconds */
-  VALUE mSize;         /* the size of the file in bytes */
-  VALUE mReplication;  /* the count of replicas */
-  VALUE mBlockSize;    /* the block size for the file */
+  tTime mLastMod;      /* the last modification time for the file in seconds */
+  tOffset mSize;         /* the size of the file in bytes */
+  short mReplication;  /* the count of replicas */
+  tOffset mBlockSize;    /* the block size for the file */
   VALUE mOwner;        /* the owner of the file */
   VALUE mGroup;        /* the group associated with the file */
-  VALUE mPermissions;  /* the permissions associated with the file */
-  VALUE mLastAccess;   /* the last access time for the file in seconds */
+  short mPermissions;  /* the permissions associated with the file */
+  tTime mLastAccess;   /* the last access time for the file in seconds */
 } FileInfo;
 
 /*
@@ -114,14 +114,14 @@ VALUE wrap_hdfsFileInfo(hdfsFileInfo* info) {
   // supplied hdfsFileInfo struct.
   FileInfo* file_info = ALLOC_N(FileInfo, 1);
   file_info->mName = rb_str_new(info->mName, strlen(info->mName));
-  file_info->mLastMod = LONG2NUM(info->mLastMod);
-  file_info->mSize = LONG2NUM(info->mSize);
-  file_info->mReplication = INT2NUM(info->mReplication);
-  file_info->mBlockSize = LONG2NUM(info->mBlockSize);
+  file_info->mLastMod = info->mLastMod;
+  file_info->mSize = info->mSize;
+  file_info->mReplication = info->mReplication;
+  file_info->mBlockSize = info->mBlockSize;
   file_info->mOwner = rb_str_new(info->mOwner, strlen(info->mOwner));
   file_info->mGroup = rb_str_new(info->mGroup, strlen(info->mGroup));
-  file_info->mPermissions = INT2NUM(decimal_octal(info->mPermissions));
-  file_info->mLastAccess = LONG2NUM(info->mLastAccess);
+  file_info->mPermissions = info->mPermissions;
+  file_info->mLastAccess = info->mLastAccess;
   // Assigns FileInfo::Info or FileInfo::Directory class based upon the type of
   // the file.
   switch(info->mKind) {
@@ -744,7 +744,7 @@ VALUE HDFS_File_Info_File_is_file(VALUE self) {
 VALUE HDFS_File_Info_last_access(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return file_info->mLastAccess;
+  return LONG2NUM(file_info->mLastAccess);
 }
 
 /**
@@ -757,7 +757,7 @@ VALUE HDFS_File_Info_last_access(VALUE self) {
 VALUE HDFS_File_Info_last_modified(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return file_info->mLastMod;
+  return LONG2NUM(file_info->mLastMod);
 }
 
 /**
@@ -770,7 +770,7 @@ VALUE HDFS_File_Info_last_modified(VALUE self) {
 VALUE HDFS_File_Info_mode(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return file_info->mPermissions;
+  return INT2NUM(decimal_octal(file_info->mPermissions));
 }
 
 /**
@@ -806,7 +806,7 @@ VALUE HDFS_File_Info_owner(VALUE self) {
 VALUE HDFS_File_Info_replication(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return file_info->mReplication;
+  return INT2NUM(file_info->mReplication);
 }
 
 /**
@@ -818,7 +818,7 @@ VALUE HDFS_File_Info_replication(VALUE self) {
 VALUE HDFS_File_Info_size(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return file_info->mSize;
+  return LONG2NUM(file_info->mSize);
 }
 
 /**
