@@ -71,6 +71,9 @@ void free_file_data(FileData* data) {
 
 void free_file_info(FileInfo* file_info) {
   if (file_info) {
+    free(file_info->mName);
+    free(file_info->mOwner);
+    free(file_info->mGroup);
     free(file_info);
   }
 }
@@ -182,7 +185,7 @@ VALUE HDFS_File_System_disconnect(VALUE self) {
 
 /**
  * call-seq:
- *    hdfs.delete(path, recursive=false) -> retval
+ *    hdfs.delete(path, recursive=false) -> success
  *
  * Deletes the file at the supplied path, recursively if specified.  Returns
  * True if successful, False if unsuccessful.
@@ -190,14 +193,14 @@ VALUE HDFS_File_System_disconnect(VALUE self) {
 VALUE HDFS_File_System_delete(VALUE self, VALUE path, VALUE recursive) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  int value = hdfsDelete(data->fs, RSTRING_PTR(path),
+  int success = hdfsDelete(data->fs, RSTRING_PTR(path),
       CheckType(recursive, T_TRUE) ? 1 : HDFS_DEFAULT_RECURSIVE_DELETE);
-  return value == 0 ? Qtrue : Qfalse;
+  return success == 0 ? Qtrue : Qfalse;
 }
 
 /**
  * call-seq:
- *    hdfs.rename(from_path, to_path) -> retval
+ *    hdfs.rename(from_path, to_path) -> success
  *
  * Renames the file at the supplied path to the file at the destination path.
  * Returns True if successful, False if unsuccessful.
@@ -205,13 +208,13 @@ VALUE HDFS_File_System_delete(VALUE self, VALUE path, VALUE recursive) {
 VALUE HDFS_File_System_rename(VALUE self, VALUE from_path, VALUE to_path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  int value = hdfsRename(data->fs, RSTRING_PTR(from_path), RSTRING_PTR(to_path));
-  return value == 0 ? Qtrue : Qfalse;
+  int success = hdfsRename(data->fs, RSTRING_PTR(from_path), RSTRING_PTR(to_path));
+  return success == 0 ? Qtrue : Qfalse;
 }
 
 /**
  * call-seq:
- *    hdfs.exist(path) -> retval
+ *    hdfs.exist(path) -> file_existence
  *
  * Checks if a file exists at the supplied path.  If file exists, returns True;
  * if not, returns False.
@@ -219,13 +222,13 @@ VALUE HDFS_File_System_rename(VALUE self, VALUE from_path, VALUE to_path) {
 VALUE HDFS_File_System_exist(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  int value = hdfsExists(data->fs, RSTRING_PTR(path));
-  return value == 0 ? Qtrue : Qfalse;
+  int success = hdfsExists(data->fs, RSTRING_PTR(path));
+  return success == 0 ? Qtrue : Qfalse;
 }
 
 /**
  * call-seq:
- *    hdfs.create_directory(path) -> retval
+ *    hdfs.create_directory(path) -> success
  *
  * Checks if a file exists at the supplied path.  If file exists, returns True;
  * if not, returns False.
@@ -233,13 +236,13 @@ VALUE HDFS_File_System_exist(VALUE self, VALUE path) {
 VALUE HDFS_File_System_create_directory(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  int value = hdfsCreateDirectory(data->fs, RSTRING_PTR(path));
-  return value == 0 ? Qtrue : Qfalse;
+  int success = hdfsCreateDirectory(data->fs, RSTRING_PTR(path));
+  return success == 0 ? Qtrue : Qfalse;
 }
 
 /**
  * call-seq:
- *    hdfs.list_directory(path) -> retval
+ *    hdfs.list_directory(path) -> file_infos
  *
  * Lists the directory at the supplied path, returning an Array of
  * Hadoop::DFS::FileInfo objects.  If the directory does not exist, raises
@@ -268,7 +271,7 @@ VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
 
 /**
  * call-seq:
- *    hdfs.stat(path) -> retval
+ *    hdfs.stat(path) -> file_info
  *
  * Stats the file or directory at the supplied path, returning a
  * Hadoop::DFS:FileInfo object corresponding to it.  If the file or directory
@@ -289,7 +292,7 @@ VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
 
 /**
  * call-seq:
- *    hdfs.set_replication(path, replication) -> retval
+ *    hdfs.set_replication(path, replication) -> success
  *
  * Sets the replication of the following path to the supplied number of nodes
  * it will be replicated against.  Returns True if successful; False if not.
@@ -304,7 +307,7 @@ VALUE HDFS_File_System_set_replication(VALUE self, VALUE path, VALUE replication
 
 /**
  * call-seq:
- *    hdfs.cd(path) -> retval
+ *    hdfs.cd(path) -> success
  *
  * Changes the current working directory to the supplied path.  Returns True if
  * successful; False if not.
@@ -316,16 +319,26 @@ VALUE HDFS_File_System_cd(VALUE self, VALUE path) {
   return success == 0 ? Qtrue : Qfalse;
 }
 
-/*VALUE HDFS_File_System_cwd(VALUE self) {
+/**
+ * call-seq:
+ *    hdfs.cwd -> success
+ *
+ * Changes the current working directory to the supplied path.  Returns True if
+ * successful; False if not.
+ */
+VALUE HDFS_File_System_cwd(VALUE self) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  int success = hdfsSetWorkingDirectory(data->fs, RSTRING_PTR(path));
-  return success == 0 ? Qtrue : Qfalse;
-}*/
+  char* cur_dir = new char[HDFS_DEFAULT_PATH_STRING_LENGTH];
+  int success = hdfsGetWorkingDirectory(data->fs, cur_dir, HDFS_DEFAULT_PATH_STRING_LENGTH);
+  VALUE ruby_cur_dir = rb_str_new(cur_dir);
+  free(cur_dir);
+  return ruby_cur_dir;
+}
 
 /**
  * call-seq:
- *    hdfs.chgrp(path, group) -> retval
+ *    hdfs.chgrp(path, group) -> success
  *
  * Changes the group of the supplied path.  Returns True if successful; False
  * if not.
@@ -869,7 +882,7 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "stat", HDFS_File_System_stat, 1);
   rb_define_method(c_file_system, "set_replication", HDFS_File_System_set_replication, 2);
   rb_define_method(c_file_system, "cd", HDFS_File_System_cd, 1);
-  //rb_define_method(c_file_system, "cwd", HDFS_File_System_cwd, 0);
+  rb_define_method(c_file_system, "cwd", HDFS_File_System_cwd, 0);
   rb_define_method(c_file_system, "chgrp", HDFS_File_System_chgrp, 2);
   rb_define_method(c_file_system, "chmod", HDFS_File_System_chmod, 2);
   rb_define_method(c_file_system, "chown", HDFS_File_System_chown, 2);
