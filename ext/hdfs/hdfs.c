@@ -323,8 +323,8 @@ VALUE HDFS_File_System_cd(VALUE self, VALUE path) {
  * call-seq:
  *    hdfs.cwd -> success
  *
- * Changes the current working directory to the supplied path.  Returns True if
- * successful; False if not.
+ * Returns the current working directory as a String.  If this fails, raises a
+ * Hadoop::DFS::DFSException.
  */
 VALUE HDFS_File_System_cwd(VALUE self) {
   FSData* data = NULL;
@@ -333,6 +333,10 @@ VALUE HDFS_File_System_cwd(VALUE self) {
       sizeof(char) * HDFS_DEFAULT_PATH_STRING_LENGTH);
   int success = hdfsGetWorkingDirectory(data->fs, cur_dir,
       HDFS_DEFAULT_PATH_STRING_LENGTH);
+  if ( success == NULL ) {
+    rb_raise(e_dfs_exception, "Unable to obtain current working directory");
+    return Qnil;
+  }
   VALUE ruby_cur_dir = rb_str_new2(cur_dir);
   free(cur_dir);
   return ruby_cur_dir;
@@ -506,7 +510,7 @@ VALUE HDFS_File_System_get_hosts_at_path(VALUE self, VALUE path, VALUE start,
       NUM2LONG(start), NUM2LONG(length));
   if (blocks_hosts == NULL) {
     rb_raise(e_dfs_exception,
-        "Error while retrieving hosts at path: %s, start = %d, length = %d",
+        "Error while retrieving hosts at path: %s, start = %ld, length = %ld",
         RSTRING_PTR(path), NUM2LONG(start), NUM2LONG(length));
     return Qnil;
   }
@@ -528,7 +532,7 @@ VALUE HDFS_File_System_get_hosts_at_path(VALUE self, VALUE path, VALUE start,
     rb_ary_push(blocks_array, hosts_array);
   }
   // Frees 2-D blocks/hosts data structure.
-  hdfsFreeHosts(hosts);
+  hdfsFreeHosts(blocks_hosts);
   return blocks_array;
 }
 
@@ -558,7 +562,7 @@ VALUE HDFS_File_System_used(VALUE self) {
  * epoch for the supplied file.  Returns true if successful; false if not.
  */
 VALUE HDFS_File_System_utime(VALUE self, VALUE path, VALUE modified_time,
-    xxwVALUE access_time) {
+    VALUE access_time) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   int success = hdfsUtime(data->fs, RSTRING_PTR(path),
@@ -947,7 +951,7 @@ void Init_hdfs() {
       HDFS_File_System_default_block_size, 0);
   rb_define_method(c_file_system, "default_block_size_at_path",
       HDFS_File_System_default_block_size_at_path, 1);
-  rb_define_method(c_flle_system, "get_hosts_at_path",
+  rb_define_method(c_file_system, "get_hosts_at_path",
       HDFS_File_System_get_hosts_at_path, 3);
   rb_define_method(c_file_system, "move", HDFS_File_System_move, 2);
   rb_define_method(c_file_system, "used", HDFS_File_System_used, 0);
