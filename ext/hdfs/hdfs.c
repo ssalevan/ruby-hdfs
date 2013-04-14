@@ -494,6 +494,46 @@ VALUE HDFS_File_System_default_block_size_at_path(VALUE self, VALUE path) {
 
 /**
  * call-seq:
+ *    hdfs.get_hosts_at_path(path, start, length) -> blocks_to_hosts
+ *
+ * Returns an Array of Arrays, with each containing the 
+ */
+VALUE HDFS_File_System_get_hosts_at_path(VALUE self, VALUE path, VALUE start,
+    VALUE length) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  char*** blocks_hosts = hdfsGetHosts(data->fs, RSTRING_PTR(path),
+      NUM2LONG(start), NUM2LONG(length));
+  if (blocks_hosts == NULL) {
+    rb_raise(e_dfs_exception,
+        "Error while retrieving hosts at path: %s, start = %d, length = %d",
+        RSTRING_PTR(path), NUM2LONG(start), NUM2LONG(length));
+    return Qnil;
+  }
+  VALUE blocks_array = rb_ary_new();
+  // Appends each array of hosts to the list of blocks/hosts within the
+  // specified file length.
+  int num_blocks = sizeof(blocks_hosts) / sizeof(char*);
+  int i;
+  for ( i = 0; i < num_blocks; i++ ) {
+    VALUE hosts_array = rb_ary_new();
+    int num_hosts = sizeof(blocks_hosts[i]) / sizeof(char*);
+    int j;
+    // Appends all hosts for this block to the current Array of hosts.
+    for ( j = 0; j < num_hosts; j++ ) {
+      VALUE cur_host = rb_str_new2(blocks_hosts[i][j]);
+      rb_ary_push(hosts_array, cur_host);
+    }
+    // Appends current hosts for current block to block Array.
+    rb_ary_push(blocks_array, hosts_array);
+  }
+  // Frees 2-D blocks/hosts data structure.
+  hdfsFreeHosts(hosts);
+  return blocks_array;
+}
+
+/**
+ * call-seq:
  *    hdfs.used -> retval
  *
  * Returns the bytes currently in use by this filesystem, raising a
@@ -517,7 +557,8 @@ VALUE HDFS_File_System_used(VALUE self) {
  * Changes the last modified and/or last access time in seconds since the Unix
  * epoch for the supplied file.  Returns true if successful; false if not.
  */
-VALUE HDFS_File_System_utime(VALUE self, VALUE path, VALUE modified_time, VALUE access_time) {
+VALUE HDFS_File_System_utime(VALUE self, VALUE path, VALUE modified_time,
+    xxwVALUE access_time) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   int success = hdfsUtime(data->fs, RSTRING_PTR(path),
@@ -568,6 +609,18 @@ VALUE HDFS_File_System_open(VALUE self, VALUE path, VALUE mode, VALUE options) {
 /*
  * File interface
  */
+
+VALUE HDFS_File_pread(VALUE self, VALUE length) {
+  FileData* data = NULL;
+  Data_Get_Struct(self, FileData, data);
+  char* buffer = ALLOC_N(char, length);
+  MEMZERO(buffer, char, length);
+  tSize bytes_read = hdfsRead(data->fs, data->file, buffer, NUM2INT(length));
+  if (bytes_read == -1) {
+    rb_raise(e_file_error, "Failed to read data");
+  }
+  return rb_tainted_str_new2(buffer);
+}
 
 /**
  * call-seq:
@@ -894,6 +947,8 @@ void Init_hdfs() {
       HDFS_File_System_default_block_size, 0);
   rb_define_method(c_file_system, "default_block_size_at_path",
       HDFS_File_System_default_block_size_at_path, 1);
+  rb_define_method(c_flle_system, "get_hosts_at_path",
+      HDFS_File_System_get_hosts_at_path, 3);
   rb_define_method(c_file_system, "move", HDFS_File_System_move, 2);
   rb_define_method(c_file_system, "used", HDFS_File_System_used, 0);
   rb_define_method(c_file_system, "utime", HDFS_File_System_utime, 3);
