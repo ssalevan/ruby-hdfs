@@ -194,7 +194,7 @@ VALUE HDFS_File_System_delete(VALUE self, VALUE path, VALUE recursive) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   int success = hdfsDelete(data->fs, RSTRING_PTR(path),
-      CheckType(recursive, T_TRUE) ? 1 : HDFS_DEFAULT_RECURSIVE_DELETE);
+      Check_Type(recursive, T_TRUE) ? 1 : HDFS_DEFAULT_RECURSIVE_DELETE);
   return success == 0 ? Qtrue : Qfalse;
 }
 
