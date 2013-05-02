@@ -888,7 +888,7 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "chgrp", HDFS_File_System_chgrp, 2);
   rb_define_method(c_file_system, "chmod", HDFS_File_System_chmod, 2);
   rb_define_method(c_file_system, "chown", HDFS_File_System_chown, 2);
-  rb_define_method(c_file_system, "copy", HDFS_File_System_copy, 2);
+  rb_define_method(c_file_system, "copy", HDFS_File_System_copy, 3);
   rb_define_method(c_file_system, "capacity", HDFS_File_System_capacity, 0);
   rb_define_method(c_file_system, "default_block_size",
       HDFS_File_System_default_block_size, 0);
