@@ -23,4 +23,10 @@ to setup your classpath on chd4 machines require `hdfs/classpath`, or see [class
 require 'hdfs/classpath'
 
 dfs = Hadoop::DFS::FileSystem.new 'namenode.domain.tld', 8020
+
+dfs.list_directory('/').select(&:is_directory?).first.name
+ => 'hdfs://namenode.domain.tld:8020/hbase'
+
+IO.copy_stream File.open('/tmp/local_file', 'rb'),
+               dfs.open('/tmp/remote_file', 'w', replication: 3)
 ```
