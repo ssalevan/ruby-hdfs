@@ -6,6 +6,10 @@
   - libhdfs (2.x)
 
 ### installation
+```
+gem install ruby-hdfs-cdh4
+```
+
 this gem provides defaults for installation on machines using cdh4 and the hadoop-libhdfs cloudera package, but the following enviorment variables are available for configuration.
 
   - HADOOP_ENV
