@@ -17,8 +17,10 @@ this gem provides defaults for installation on machines using cdh4 and the hadoo
   - JAVA_LIB
 
 ### usage
-to setup your classpath on chd4 machines
+to setup your classpath on chd4 machines require `hdfs/classpath`, or see [classpath.rb](https://github.com/dallasmarlow/ruby-hdfs-cdh4/blob/master/lib/hdfs/classpath.rb) as an example.
 
 ```ruby
 require 'hdfs/classpath'
+
+dfs = Hadoop::DFS::FileSystem.new 'namenode.domain.tld', 8020
 ```
