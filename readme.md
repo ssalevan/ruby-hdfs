@@ -29,4 +29,5 @@ dfs.list_directory('/').select(&:is_directory?).first.name
 
 IO.copy_stream File.open('/tmp/local_file', 'rb'),
                dfs.open('/tmp/remote_file', 'w', replication: 3)
+ => 36986
 ```
