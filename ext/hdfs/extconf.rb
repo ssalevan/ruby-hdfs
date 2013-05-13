@@ -1,61 +1,49 @@
 require 'mkmf'
 
-if enable_config('debug')
-  puts '[INFO] enabling debug library build configuration.'
-  if RUBY_VERSION < '1.9'
-    $CFLAGS = CONFIG['CFLAGS'].gsub(/\s\-O\d?\s/, ' -O0 ')
-    $CFLAGS.gsub!(/\s?\-g\w*\s/, ' -ggdb3 ')
-    CONFIG['LDSHARED'] = CONFIG['LDSHARED'].gsub(/\s\-s(\s|\z)/, ' ')
-  else
-    CONFIG['debugflags'] << ' -ggdb3 -O0'
+# debug options
+if enable_config 'debug'
+  puts 'enabling debug library build configuration.'
+
+  $CFLAGS = CONFIG['CFLAGS'].gsub(/\s\-O\d?\s/, ' -O0 ').
+                             gsub(/\s?\-g\w*\s/, ' -ggdb3 ')
+  CONFIG['LDSHARED'] = CONFIG['LDSHARED'].gsub(/\s\-s(\s|\z)/, ' ')
+end
+
+# setup enviorment
+ENV['HADOOP_ENV'] ||= '/etc/hadoop/conf/hadoop-env.sh'
+
+# java home
+ENV['JAVA_HOME'] ||= case
+when File.readable?(ENV['HADOOP_ENV']) 
+  puts 'JAVA_HOME is not set, attempting to read value from ' + ENV['HADOOP_ENV']
+
+  File.read(ENV['HADOOP_ENV']).split("\n").find do |line|
+    line.include? 'JAVA_HOME=' and not line.start_with? '#'
+  end.split('=').last
+else # check common locations
+  java_locations = ['/usr/java/default'] # todo: add more locations to check
+
+  puts 'JAVA_HOME is not set, checking common locations: ' + java_locations.join(',')
+ 
+  java_locations.find do |path|
+    File.directory?(path) and File.exist? File.join path, 'bin/java'    
   end
 end
+abort 'unable to find value for JAVA_HOME' unless ENV['JAVA_HOME']
 
-java_home = ENV["JAVA_HOME"]
-unless java_home
-  %w(
-    /usr/java/default
-    /usr/lib/jvm/java-6-openjdk
-  ).each do |path|
-    if File.directory?(path)
-      java_home = path
-      $stderr << "Warning: Automatically guessed #{path} as Java home, might not be correct.\n"
-    end
-  end
-  abort("JAVA_HOME needs to be defined.") unless java_home
-end
-puts("Java home: #{java_home}")
+# libjvm
+ENV['JAVA_LIB'] ||= File.dirname Dir.glob(File.join(ENV['JAVA_HOME'], '**', 'libjvm.so')).first
+abort 'unable to find value for JAVA_LIB or detect location of libjvm.so' unless ENV['JAVA_LIB']
 
-java_lib_path = ENV["JAVA_LIB"]
-unless java_lib_path
-  libjvm = "libjvm.so"
-  [
-    "#{java_home}/lib",
-    "#{java_home}/lib/*/client",
-    "#{java_home}/lib/*/server",
-    "#{java_home}/jre/lib",
-    "#{java_home}/jre/lib/*/client",
-    "#{java_home}/jre/lib/*/server"
-  ].each do |glob|
-    Dir.glob(glob).each do |path|
-      if File.exist?(File.join(path, libjvm))
-        java_lib_path ||= path 
-        break
-      end
-    end
-  end
-  abort("Could not determine Java library path (need #{libjvm})") unless java_lib_path
-end
-puts("Java library path: #{java_lib_path}")
-
-java_include_paths = Dir.glob("#{java_home}/include/**/.").map { |s| s.gsub(/\/\.$/, '') }
-puts("Java include paths: #{java_include_paths.join(', ')}")
-java_include_paths.each do |path|
-  $INCFLAGS << " -I#{path}"
+# java include paths
+Dir.glob(File.join(ENV['JAVA_HOME'], 'include', '**', '.')).map {|path| File.dirname path}.each do |include_path|
+  $INCFLAGS << [' -I', include_path].join
 end
 
-dir_config("hdfs")
-find_library("jvm", nil, java_lib_path)
-find_library("hdfs", nil, java_lib_path)
-have_library("c", "main")
-create_makefile("hdfs")
+dir_config 'hdfs'
+['jvm', 'hdfs'].each do |lib|
+  find_library lib, nil, ENV['JAVA_LIB']
+end
+
+have_library    'c', 'main'
+create_makefile 'hdfs'
