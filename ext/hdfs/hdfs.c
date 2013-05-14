@@ -406,7 +406,7 @@ VALUE HDFS_File_System_copy(VALUE self, VALUE from_path, VALUE to_path, VALUE to
     }
   }
   int success = hdfsCopy(data->fs, RSTRING_PTR(from_path), destFS,
-      RSTRING_PTR(to_fs));
+      RSTRING_PTR(to_path));
   return success == 0 ? Qtrue : Qfalse;
 }
 
@@ -433,7 +433,7 @@ VALUE HDFS_File_System_move(VALUE self, VALUE from_path, VALUE to_path, VALUE to
     }
   }
   int success = hdfsMove(data->fs, RSTRING_PTR(from_path), destFS,
-      RSTRING_PTR(to_fs));
+      RSTRING_PTR(to_path));
   return success == 0 ? Qtrue : Qfalse;
 }
 
