@@ -14,6 +14,7 @@ static VALUE c_file_system;
 static VALUE c_file_info_file;
 static VALUE c_file_info_directory;
 static VALUE e_dfs_exception;
+static VALUE e_connect_error;
 static VALUE e_file_error;
 static VALUE e_could_not_open;
 static VALUE e_does_not_exist;
@@ -164,7 +165,7 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
   VALUE host, port;
   rb_scan_args(argc, argv, "02", &host, &port);
   // Sets default values for host and port if not supplied by user.
-  char* hdfs_host = HDFS_DEFAULT_HOST;
+  char* hdfs_host = (char*) HDFS_DEFAULT_HOST;
   int hdfs_port = HDFS_DEFAULT_PORT;
   if (!NIL_P(host)) {
     hdfs_host = RSTRING_PTR(host);
@@ -361,7 +362,7 @@ VALUE HDFS_File_System_set_replication(int argc, VALUE* argv, VALUE self) {
 VALUE HDFS_File_System_cd(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  if (hdfsSetWorkingDirectory(data->fs, RSTRING_PTR(path) < 0) {
+  if (hdfsSetWorkingDirectory(data->fs, RSTRING_PTR(path)) < 0) {
     rb_raise(e_dfs_exception,
         "Failed to change current working directory to path: %s",
         RSTRING_PTR(path));
@@ -620,8 +621,8 @@ VALUE HDFS_File_System_utime(int argc, VALUE* argv, VALUE self) {
   if (hdfsUtime(data->fs, RSTRING_PTR(path), hdfs_modified_time,
       hdfs_access_time) < 0) {
     rb_raise(e_dfs_exception,
-        "Error while setting modified time: %d, access time: %d at path: %s",
-        hdfs_modified_time, hdfs_access_time, RSTRING_PTR(path));
+        "Error while setting modified time: %lu, access time: %lu at path: %s",
+        (long) hdfs_modified_time, (long) hdfs_access_time, RSTRING_PTR(path));
     return Qnil;
   }
   return Qtrue;
