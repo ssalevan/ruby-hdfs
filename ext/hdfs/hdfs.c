@@ -630,7 +630,7 @@ VALUE HDFS_File_System_utime(int argc, VALUE* argv, VALUE self) {
 
 /**
  * call-seq:
- *    hdfs.open(path, mode='r', options = {}) -> file
+ *    hdfs.open(path, mode='r', options={}) -> file
  *
  * Opens a file.  If the file cannot be opened, raises a CouldNotOpenError;
  * otherwise, returns a Hadoop::DFS::File object corresponding to the file.
@@ -793,7 +793,7 @@ VALUE HDFS_File_close(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
   if (data->file != NULL) {
-    int result = hdfsCloseFile(data->fs, data->file);
+    hdfsCloseFile(data->fs, data->file);
     data->file = NULL;
   }
   return Qtrue;
