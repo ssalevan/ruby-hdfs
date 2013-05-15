@@ -22,7 +22,7 @@ static VALUE e_does_not_exist;
 static const int32_t HDFS_DEFAULT_BLOCK_SIZE     = 134217728;
 static const int16_t HDFS_DEFAULT_REPLICATION    = 3;
 static const short HDFS_DEFAULT_MODE             = 0644;
-static const char* HDFS_DEFAULT_HOST             = "localhost";
+static const char* HDFS_DEFAULT_HOST             = "0.0.0.0";
 static const int HDFS_DEFAULT_RECURSIVE_DELETE   = 0;
 static const int HDFS_DEFAULT_PATH_STRING_LENGTH = 1024;
 static const int HDFS_DEFAULT_PORT               = 8020;
@@ -1038,7 +1038,7 @@ void Init_hdfs() {
 
   e_dfs_exception = rb_define_class_under(m_dfs, "DFSException", rb_eStandardError);
   e_connect_error = rb_define_class_under(m_dfs, "ConnectError", e_dfs_exception);
-  e_file_error = rb_define_class_under(m_dfs, "FileError", e_dfs_exception);  
+  e_file_error = rb_define_class_under(m_dfs, "FileError", e_dfs_exception);
   e_could_not_open = rb_define_class_under(m_dfs, "CouldNotOpenFileError", e_file_error);
   e_does_not_exist = rb_define_class_under(m_dfs, "DoesNotExistError", e_file_error); 
 }
