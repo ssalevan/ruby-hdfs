@@ -515,7 +515,8 @@ VALUE HDFS_File_System_move(int argc, VALUE* argv, VALUE self) {
   }
   if (hdfsMove(data->fs, RSTRING_PTR(from_path), destFS,
       RSTRING_PTR(to_path)) < 0) {
-    rb_raise(e_dfs_exception, "Error while retrieving capacity");
+    rb_raise(e_dfs_exception, "Error while moving path: %s to path: %s",
+        RSTRING_PTR(from_path), RSTRING_PTR(to_path));
     return Qnil;
   }
   return Qtrue;
@@ -574,6 +575,37 @@ VALUE HDFS_File_System_default_block_size_at_path(VALUE self, VALUE path) {
     return Qnil;
   }
   return LONG2NUM(block_size);
+}
+
+/**
+ * call-seq:
+ *    hdfs.get_hosts(path, start, length) -> retval
+ *
+ * Returns the hosts which 
+ */
+VALUE HDFS_File_System_get_hosts(VALUE self, VALUE path, VALUE start,
+    VALUE length) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  char*** hosts = hdfsGetHosts(data->fs, RSTRING_PTR(path), NUM2LONG(start),
+      NUM2LONG(length));
+  if (hosts == NULL) {
+    rb_raise(e_dfs_exception,
+        "Error while retrieving hosts at path: %s, start: %lu, length: %lu",
+        RSTRING_PTR(path), NUM2LONG(start), NUM2LONG(length));
+    return Qnil;
+  }
+  // Builds a Ruby Array object out of the hosts reported by HDFS.
+  VALUE hosts_array = rb_ary_new();
+  int i, j;
+  for (i = 0; i < sizeof(hosts); i++) {
+    VALUE cur_block_hosts = rb_ary_new();
+    for (j = 0; j < sizeof(hosts[i]); j++) {
+      rb_ary_push(cur_block_hosts, rb_str_new2(hosts[i][j]));
+    }
+    rb_ary_push(hosts_array, cur_block_hosts);
+  }
+  return hosts_array;
 }
 
 /**
@@ -981,16 +1013,21 @@ void Init_hdfs() {
 
   c_file_system = rb_define_class_under(m_dfs, "FileSystem", rb_cObject);
   rb_define_alloc_func(c_file_system, HDFS_File_System_alloc);
-  rb_define_method(c_file_system, "initialize", HDFS_File_System_initialize, -1);
-  rb_define_method(c_file_system, "disconnect", HDFS_File_System_disconnect, 0);
+  rb_define_method(c_file_system, "initialize", HDFS_File_System_initialize,
+      -1);
+  rb_define_method(c_file_system, "disconnect", HDFS_File_System_disconnect,
+      0);
   rb_define_method(c_file_system, "open", HDFS_File_System_open, -1);
   rb_define_method(c_file_system, "delete", HDFS_File_System_delete, -1);
   rb_define_method(c_file_system, "rename", HDFS_File_System_rename, 2);
   rb_define_method(c_file_system, "exist?", HDFS_File_System_exist, 1);
-  rb_define_method(c_file_system, "create_directory", HDFS_File_System_create_directory, 1);
-  rb_define_method(c_file_system, "list_directory", HDFS_File_System_list_directory, 1);
+  rb_define_method(c_file_system, "create_directory",
+      HDFS_File_System_create_directory, 1);
+  rb_define_method(c_file_system, "list_directory",
+      HDFS_File_System_list_directory, 1);
   rb_define_method(c_file_system, "stat", HDFS_File_System_stat, 1);
-  rb_define_method(c_file_system, "set_replication", HDFS_File_System_set_replication, -1);
+  rb_define_method(c_file_system, "set_replication",
+      HDFS_File_System_set_replication, -1);
   rb_define_method(c_file_system, "cd", HDFS_File_System_cd, 1);
   rb_define_method(c_file_system, "cwd", HDFS_File_System_cwd, 0);
   rb_define_method(c_file_system, "chgrp", HDFS_File_System_chgrp, 2);
@@ -1002,6 +1039,7 @@ void Init_hdfs() {
       HDFS_File_System_default_block_size, 0);
   rb_define_method(c_file_system, "default_block_size_at_path",
       HDFS_File_System_default_block_size_at_path, 1);
+  rb_define_method(c_file_system, "get_hosts", HDFS_File_System_get_hosts, 3);
   rb_define_method(c_file_system, "move", HDFS_File_System_move, -1);
   rb_define_method(c_file_system, "used", HDFS_File_System_used, 0);
   rb_define_method(c_file_system, "utime", HDFS_File_System_utime, -1);
@@ -1019,10 +1057,12 @@ void Init_hdfs() {
   c_file_info = rb_define_class_under(m_dfs, "FileInfo", rb_cObject);
   rb_define_method(c_file_info, "block_size", HDFS_File_Info_block_size, 0);
   rb_define_method(c_file_info, "group", HDFS_File_Info_group, 0);
-  rb_define_method(c_file_info, "is_directory?", HDFS_File_Info_is_directory, 0);
+  rb_define_method(c_file_info, "is_directory?", HDFS_File_Info_is_directory,
+      0);
   rb_define_method(c_file_info, "is_file?", HDFS_File_Info_is_file, 0);
   rb_define_method(c_file_info, "last_access", HDFS_File_Info_last_access, 0);
-  rb_define_method(c_file_info, "last_modified", HDFS_File_Info_last_modified, 0);
+  rb_define_method(c_file_info, "last_modified", HDFS_File_Info_last_modified,
+      0);
   rb_define_method(c_file_info, "mode", HDFS_File_Info_mode, 0);
   rb_define_method(c_file_info, "name", HDFS_File_Info_name, 0);
   rb_define_method(c_file_info, "owner", HDFS_File_Info_owner, 0);
@@ -1031,14 +1071,21 @@ void Init_hdfs() {
   rb_define_method(c_file_info, "to_s", HDFS_File_Info_to_s, 0);
 
   c_file_info_file = rb_define_class_under(c_file_info, "File", c_file_info);
-  rb_define_method(c_file_info_file, "is_file?", HDFS_File_Info_File_is_file, 0);
+  rb_define_method(c_file_info_file, "is_file?", HDFS_File_Info_File_is_file,
+      0);
 
-  c_file_info_directory = rb_define_class_under(c_file_info, "Directory", c_file_info);
-  rb_define_method(c_file_info_directory, "is_directory?", HDFS_File_Info_Directory_is_directory, 0);
+  c_file_info_directory = rb_define_class_under(c_file_info, "Directory",
+      c_file_info);
+  rb_define_method(c_file_info_directory, "is_directory?",
+      HDFS_File_Info_Directory_is_directory, 0);
 
-  e_dfs_exception = rb_define_class_under(m_dfs, "DFSException", rb_eStandardError);
-  e_connect_error = rb_define_class_under(m_dfs, "ConnectError", e_dfs_exception);
+  e_dfs_exception = rb_define_class_under(m_dfs, "DFSException",
+      rb_eStandardError);
+  e_connect_error = rb_define_class_under(m_dfs, "ConnectError",
+      e_dfs_exception);
   e_file_error = rb_define_class_under(m_dfs, "FileError", e_dfs_exception);
-  e_could_not_open = rb_define_class_under(m_dfs, "CouldNotOpenFileError", e_file_error);
-  e_does_not_exist = rb_define_class_under(m_dfs, "DoesNotExistError", e_file_error); 
+  e_could_not_open = rb_define_class_under(m_dfs, "CouldNotOpenFileError",
+      e_file_error);
+  e_does_not_exist = rb_define_class_under(m_dfs, "DoesNotExistError",
+      e_file_error); 
 }
