@@ -20,6 +20,6 @@ Gem::Specification.new do |gem|
 
   gem.extensions       = ['ext/hdfs/extconf.rb']
   gem.require_paths    = ['lib']
-  gem.required_rubygems_version = '>= 1.9.2'
+  gem.required_rubygems_version = '>= 1.8.10'
 end
 
