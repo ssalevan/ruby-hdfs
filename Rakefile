@@ -43,7 +43,7 @@ namespace :gem do
 
   task :release, :version_type do |task, args|
     Rake::Task['version:increment'].invoke args.version_type
-    Rake::Task['git:tag']
+    Rake::Task['git:tag'].invoke
     Rake::Task['gem:build'].invoke
 
     # realse latest gem
