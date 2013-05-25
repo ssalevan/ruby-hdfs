@@ -109,6 +109,12 @@ int octal_decimal(int n) {
   return decimal;
 }
 
+void ensure_file_open(FileData* data) {
+  if (data->file == NULL) {
+    rb_raise(e_file_error, "File is closed");
+  }
+}
+
 /*
  * Copies an hdfsFileInfo struct into a Hadoop::DFS::FileInfo derivative
  * object.
@@ -755,9 +761,7 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
 VALUE HDFS_File_read(VALUE self, VALUE length) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
-  if (data->file == NULL) {
-    rb_raise(e_file_error, "File is closed");
-  }
+  ensure_file_open(data);
   char* buffer = ALLOC_N(char, length);
   MEMZERO(buffer, char, length);
   tSize bytes_read = hdfsRead(data->fs, data->file, buffer, NUM2INT(length));
@@ -777,6 +781,7 @@ VALUE HDFS_File_read(VALUE self, VALUE length) {
 VALUE HDFS_File_write(VALUE self, VALUE bytes) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
+  ensure_file_open(data);
   tSize bytes_written = hdfsWrite(data->fs, data->file, RSTRING_PTR(bytes), RSTRING_LEN(bytes));
   if (bytes_written == -1) {
     rb_raise(e_file_error, "Failed to write data");
@@ -794,6 +799,7 @@ VALUE HDFS_File_write(VALUE self, VALUE bytes) {
 VALUE HDFS_File_tell(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
+  ensure_file_open(data);
   tSize offset = hdfsTell(data->fs, data->file);
   if (offset == -1) {
     rb_raise(e_file_error, "Failed to read position");
@@ -811,6 +817,7 @@ VALUE HDFS_File_tell(VALUE self) {
 VALUE HDFS_File_seek(VALUE self, VALUE offset) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
+  ensure_file_open(data);
   int result = hdfsSeek(data->fs, data->file, NUM2INT(offset));
   if (result != 0) {
     rb_raise(e_file_error, "Failed to seek to position %d", NUM2INT(offset));
@@ -829,6 +836,7 @@ VALUE HDFS_File_seek(VALUE self, VALUE offset) {
 VALUE HDFS_File_flush(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
+  ensure_file_open(data);
   int result = hdfsFlush(data->fs, data->file);
   if (result != 0) {
     rb_raise(e_file_error, "Flush failed");
@@ -846,6 +854,7 @@ VALUE HDFS_File_flush(VALUE self) {
 VALUE HDFS_File_available(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
+  ensure_file_open(data);
   int result = hdfsAvailable(data->fs, data->file);
   if (result == -1) {
     rb_raise(e_file_error, "Failed to get available data");
