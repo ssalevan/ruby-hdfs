@@ -755,6 +755,9 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
 VALUE HDFS_File_read(VALUE self, VALUE length) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
+  if (data->file == NULL) {
+    rb_raise(e_file_error, "File is closed");
+  }
   char* buffer = ALLOC_N(char, length);
   MEMZERO(buffer, char, length);
   tSize bytes_read = hdfsRead(data->fs, data->file, buffer, NUM2INT(length));
