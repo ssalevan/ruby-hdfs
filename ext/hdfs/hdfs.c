@@ -896,7 +896,7 @@ VALUE HDFS_File_write_open(VALUE self) {
   Data_Get_Struct(self, FileData, data);
   if (data->file) {
     return hdfsFileIsOpenForWrite(data->file) ? Qtrue : Qfalse;
-  else {
+  } else {
     return Qfalse;
   }
 }
