@@ -169,11 +169,11 @@ VALUE HDFS_File_System_alloc(VALUE klass) {
  *
  * options can have the following keys:
  *
- *  * *local*: whether to use the local filesystem instead of HDFS
+ * * *local*: whether to use the local filesystem instead of HDFS
  *    (default: false)
- *  * *host*: hostname or IP address of a Hadoop NameNode (default: '0.0.0.0')
- *  * *port*: port through which to connect to Hadoop NameNode (default: 8020)
- *  * *user*: user to connect to filesystem as (default: current user)
+ * * *host*: hostname or IP address of a Hadoop NameNode (default: '0.0.0.0')
+ * * *port*: port through which to connect to Hadoop NameNode (default: 8020)
+ * * *user*: user to connect to filesystem as (default: current user)
  */
 VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
   VALUE options;
@@ -571,7 +571,7 @@ VALUE HDFS_File_System_capacity(VALUE self) {
 
 /**
  * call-seq:
- *    hdfs.capacity -> retval
+ *    hdfs.default_block_size -> retval
  *
  * Returns the default block size of this HDFS file system in bytes, raising a
  * DFSException if this was unsuccessful.
@@ -883,7 +883,7 @@ VALUE HDFS_File_close(VALUE self) {
 
 /**
  * call-seq:
- *    file.read_open -> open_for_read
+ *    file.read_open? -> open_for_read
  *
  * Returns True if this file is open for reading; otherwise returns False.
  */
@@ -899,7 +899,7 @@ VALUE HDFS_File_read_open(VALUE self) {
 
 /**
  * call-seq:
- *    file.write_open -> open_for_write
+ *    file.write_open? -> open_for_write
  *
  * Returns True if this file is open for writing; otherwise returns False.
  */
