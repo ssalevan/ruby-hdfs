@@ -622,10 +622,10 @@ VALUE HDFS_File_System_get_hosts(VALUE self, VALUE path, VALUE start,
   }
   // Builds a Ruby Array object out of the hosts reported by HDFS.
   VALUE hosts_array = rb_ary_new();
-  int i, j;
-  for (i = 0; i < sizeof(hosts); i++) {
+  size_t i, j;
+  for (i = 0; hosts[i]; i++) {
     VALUE cur_block_hosts = rb_ary_new();
-    for (j = 0; j < sizeof(hosts[i]); j++) {
+    for (j = 0; hosts[i][j]; j++) {
       rb_ary_push(cur_block_hosts, rb_str_new2(hosts[i][j]));
     }
     rb_ary_push(hosts_array, cur_block_hosts);
