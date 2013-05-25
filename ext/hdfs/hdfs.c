@@ -177,26 +177,23 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
     options = rb_hash_new();
   }
 
+  VALUE r_user = rb_hash_aref(options, rb_eval_string(":user"));
+  char* hdfs_user = RTEST(r_user) ? RSTRING_PTR(r_user) : 
+          (char*) HDFS_DEFAULT_USER;
+
   VALUE r_local = rb_hash_aref(options, rb_eval_string(":local"));
   if (r_local == Qtrue) {
-    data->fs = hdfsConnect(NULL, 0);
+    data->fs = hdfsConnectAsUser(NULL, 0, hdfs_user);
   } else {
     VALUE r_host = rb_hash_aref(options, rb_eval_string(":host"));
     VALUE r_port = rb_hash_aref(options, rb_eval_string(":port"));
 
     // Sets default values for host and port if not supplied by user.
-    char* hdfs_host = (char*) HDFS_DEFAULT_HOST;
-    int hdfs_port   = HDFS_DEFAULT_PORT;
-
-    if (RTEST(r_host)) {
-      hdfs_host = RSTRING_PTR(r_host);
-    }
-
-    if (RTEST(r_port)) {
-      hdfs_port = NUM2INT(r_port);
-    }
-
-    data->fs = hdfsConnect(hdfs_host, hdfs_port);     
+    char* hdfs_host = RTEST(r_host) ? RSTRING_PTR(r_host) : 
+        (char*) HDFS_DEFAULT_HOST;
+    int hdfs_port   = RTEST(r_port) ? NUM2INT(r_port) :
+        HDFS_DEFAULT_PORT;
+    data->fs = hdfsConnectAsUser(hdfs_host, hdfs_port, hdfs_user);     
   }
  
   if (data->fs == NULL) {
@@ -424,7 +421,7 @@ VALUE HDFS_File_System_cwd(VALUE self) {
 VALUE HDFS_File_System_chgrp(VALUE self, VALUE path, VALUE group) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  if (hdfsChgrp(data->fs, RSTRING_PTR(path), NULL, RSTRING_PTR(group)) < 0) {
+  if (hdfsChown(data->fs, RSTRING_PTR(path), NULL, RSTRING_PTR(group)) < 0) {
     rb_raise(e_dfs_exception, "Failed to chgrp path: %s to group: %s",
         RSTRING_PTR(path), RSTRING_PTR(group));
     return Qnil;
@@ -848,10 +845,37 @@ VALUE HDFS_File_close(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
   if (data->file != NULL) {
-    hdfsCloseFile(data->fs, data->file);
+    if (hdfsCloseFile(data->fs, data->file) < 0) {
+      rb_raise(e_file_error, "Could not close file");
+      return Qnil;
+    }
     data->file = NULL;
   }
   return Qtrue;
+}
+
+/**
+ * call-seq:
+ *    file.read_open -> open_for_read
+ *
+ * Returns True if this file is open for reading; otherwise returns False.
+ */
+VALUE HDFS_File_read_open(VALUE self) {
+  FileData* data = NULL;
+  Data_Get_Struct(self, FileData, data);
+  return hdfsFileIsOpenForRead(data->file) ? Qtrue : Qfalse;
+}
+
+/**
+ * call-seq:
+ *    file.write_open -> open_for_write
+ *
+ * Returns True if this file is open for writing; otherwise returns False.
+ */
+VALUE HDFS_File_write_open(VALUE self) {
+  FileData* data = NULL;
+  Data_Get_Struct(self, FileData, data);
+  return hdfsFileIsOpenForWrite(data->file) ? Qtrue : Qfalse;
 }
 
 /**
@@ -1076,6 +1100,8 @@ void Init_hdfs() {
   rb_define_method(c_file, "flush", HDFS_File_flush, 0);
   rb_define_method(c_file, "available", HDFS_File_available, 0);
   rb_define_method(c_file, "close", HDFS_File_close, 0);
+  rb_define_method(c_file, "read_open?", HDFS_File_read_open, 0);
+  rb_define_method(c_file, "write_open?", HDFS_File_write_open, 0);
 
   c_file_info = rb_define_class_under(m_dfs, "FileInfo", rb_cObject);
   rb_define_method(c_file_info, "block_size", HDFS_File_Info_block_size, 0);
