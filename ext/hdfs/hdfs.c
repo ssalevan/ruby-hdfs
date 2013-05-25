@@ -878,7 +878,11 @@ VALUE HDFS_File_close(VALUE self) {
 VALUE HDFS_File_read_open(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
-  return hdfsFileIsOpenForRead(data->file) ? Qtrue : Qfalse;
+  if (data->file) {
+    return hdfsFileIsOpenForRead(data->file) ? Qtrue : Qfalse;
+  } else {
+    return Qfalse;
+  }
 }
 
 /**
@@ -890,7 +894,11 @@ VALUE HDFS_File_read_open(VALUE self) {
 VALUE HDFS_File_write_open(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
-  return hdfsFileIsOpenForWrite(data->file) ? Qtrue : Qfalse;
+  if (data->file) {
+    return hdfsFileIsOpenForWrite(data->file) ? Qtrue : Qfalse;
+  else {
+    return Qfalse;
+  }
 }
 
 /**
