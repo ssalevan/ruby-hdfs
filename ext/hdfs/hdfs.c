@@ -19,7 +19,6 @@ static VALUE e_file_error;
 static VALUE e_could_not_open;
 static VALUE e_does_not_exist;
 
-static const int32_t HDFS_DEFAULT_BLOCK_SIZE     = 134217728;
 static const int16_t HDFS_DEFAULT_REPLICATION    = 3;
 static const short HDFS_DEFAULT_MODE             = 0644;
 static const char* HDFS_DEFAULT_HOST             = "0.0.0.0";
@@ -158,14 +157,17 @@ VALUE HDFS_File_System_alloc(VALUE klass) {
  * call-seq:
  *    hdfs.new(options={}) -> hdfs
  *
- * Creates a new HDFS client connection, returning a new
+ * Creates a new HDFS client connection, configured by options, returning a new
  * Hadoop::DFS::FileSystem object if successful.  If this fails, raises a
  * ConnectError.
  *
- * Options:
- *  :local
- *  :host
- *  :port
+ * options can have the following keys:
+ *
+ *  * *local*: whether to use the local filesystem instead of HDFS
+ *    (default: false)
+ *  * *host*: hostname or IP address of a Hadoop NameNode (default: '0.0.0.0')
+ *  * *port*: port through which to connect to Hadoop NameNode (default: 8020)
+ *  * *user*: user to connect to filesystem as (default: current user)
  */
 VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
   VALUE options;
@@ -180,7 +182,7 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
 
   VALUE r_user = rb_hash_aref(options, rb_eval_string(":user"));
   char* hdfs_user = RTEST(r_user) ? RSTRING_PTR(r_user) : 
-          (char*) HDFS_DEFAULT_USER;
+      (char*) HDFS_DEFAULT_USER;
 
   VALUE r_local = rb_hash_aref(options, rb_eval_string(":local"));
   if (r_local == Qtrue) {
@@ -602,7 +604,9 @@ VALUE HDFS_File_System_default_block_size_at_path(VALUE self, VALUE path) {
  * call-seq:
  *    hdfs.get_hosts(path, start, length) -> retval
  *
- * Returns the hosts which 
+ * Returns the hostnames of the DataNodes which serve the portion of the file
+ * between the provided start and length bytes.  Raises a DFSException if this
+ * fails.
  */
 VALUE HDFS_File_System_get_hosts(VALUE self, VALUE path, VALUE start,
     VALUE length) {
@@ -685,8 +689,18 @@ VALUE HDFS_File_System_utime(int argc, VALUE* argv, VALUE self) {
  * call-seq:
  *    hdfs.open(path, mode='r', options={}) -> file
  *
- * Opens a file.  If the file cannot be opened, raises a CouldNotOpenError;
- * otherwise, returns a Hadoop::DFS::File object corresponding to the file.
+ * Opens a file using the supplied mode and options.  If the file cannot be
+ * opened, raises a CouldNotOpenError; otherwise, returns a Hadoop::DFS::File
+ * object corresponding to the file.
+ *
+ * options can have the following keys:
+ *
+ * * *buffer_size*: size in bytes of buffer to use for file accesses
+ *   (default: default buffer size as configured by HDFS)
+ * * *replication*: the number of nodes this file should be replicated against
+ *   (default: default replication as configured by HDFS)
+ * * *block_size*: the HDFS block size in bytes to use for this file
+ *   (default: default block size as configured by HDFS)
  */
 VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
   VALUE path, mode, options;
@@ -714,7 +728,7 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
   hdfsFile file = hdfsOpenFile(data->fs, RSTRING_PTR(path), flags, 
     RTEST(r_buffer_size) ? NUM2INT(r_buffer_size) : 0, 
     RTEST(r_replication) ? NUM2INT(r_replication) : 0, 
-    RTEST(r_block_size) ? NUM2INT(r_block_size) : HDFS_DEFAULT_BLOCK_SIZE);
+    RTEST(r_block_size) ? NUM2INT(r_block_size) : 0);
   if (file == NULL) {
     rb_raise(e_could_not_open, "Could not open file %s", RSTRING_PTR(path));
     return Qnil;
