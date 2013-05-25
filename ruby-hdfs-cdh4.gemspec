@@ -1,6 +1,6 @@
 Gem::Specification.new do |gem|
   gem.name     = 'ruby-hdfs-cdh4'
-  gem.version  = '0.0.2'
+  gem.version  = File.read File.join File.dirname(__FILE__), 'VERSION'
   gem.date     = Time.now.strftime '%Y-%m-%d'
 
   gem.authors  = ['Alexander Staubo', 'Steve Salevan', 'Dallas Marlow']
@@ -20,6 +20,6 @@ Gem::Specification.new do |gem|
 
   gem.extensions       = ['ext/hdfs/extconf.rb']
   gem.require_paths    = ['lib']
-  gem.required_rubygems_version = '>= 1.9.2'
+  gem.required_rubygems_version = '>= 1.8.10'
 end
 

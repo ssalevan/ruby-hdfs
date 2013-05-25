@@ -155,32 +155,55 @@ VALUE HDFS_File_System_alloc(VALUE klass) {
 
 /**
  * call-seq:
- *    hdfs.new(host='localhost', port=8020) -> hdfs
+ *    hdfs.new(options={}) -> hdfs
  *
  * Creates a new HDFS client connection, returning a new
  * Hadoop::DFS::FileSystem object if successful.  If this fails, raises a
  * ConnectError.
+ *
+ * Options:
+ *  :local
+ *  :host
+ *  :port
  */
 VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
-  VALUE host, port;
-  rb_scan_args(argc, argv, "02", &host, &port);
-  // Sets default values for host and port if not supplied by user.
-  char* hdfs_host = (char*) HDFS_DEFAULT_HOST;
-  int hdfs_port = HDFS_DEFAULT_PORT;
-  if (!NIL_P(host)) {
-    hdfs_host = RSTRING_PTR(host);
-  }
-  if (!NIL_P(port)) {
-    hdfs_port = NUM2INT(port);
-  }
+  VALUE options;
+  rb_scan_args(argc, argv, "01", &options);
+
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  data->fs = hdfsConnect(hdfs_host, hdfs_port); 
+
+  if (NIL_P(options)) {
+    options = rb_hash_new();
+  }
+
+  VALUE r_local = rb_hash_aref(options, rb_eval_string(":local"));
+  if (r_local == Qtrue) {
+    data->fs = hdfsConnect(NULL, 0);
+  } else {
+    VALUE r_host = rb_hash_aref(options, rb_eval_string(":host"));
+    VALUE r_port = rb_hash_aref(options, rb_eval_string(":port"));
+
+    // Sets default values for host and port if not supplied by user.
+    char* hdfs_host = (char*) HDFS_DEFAULT_HOST;
+    int hdfs_port   = HDFS_DEFAULT_PORT;
+
+    if (RTEST(r_host)) {
+      hdfs_host = RSTRING_PTR(r_host);
+    }
+
+    if (RTEST(r_port)) {
+      hdfs_port = NUM2INT(r_port);
+    }
+
+    data->fs = hdfsConnect(hdfs_host, hdfs_port);     
+  }
+ 
   if (data->fs == NULL) {
-    rb_raise(e_connect_error, "Failed to connect to HDFS at: %s:%d",
-        hdfs_host, hdfs_port);
+    rb_raise(e_connect_error, "Failed to connect to HDFS");
     return Qnil;
   } 
+
   return self;
 }
 
