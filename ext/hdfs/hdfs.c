@@ -19,6 +19,7 @@ static VALUE e_file_error;
 static VALUE e_could_not_open;
 static VALUE e_does_not_exist;
 
+static const int32_t HDFS_DEFAULT_BUFFER_SIZE    = 131072;
 static const int16_t HDFS_DEFAULT_REPLICATION    = 3;
 static const short HDFS_DEFAULT_MODE             = 0644;
 static const char* HDFS_DEFAULT_HOST             = "0.0.0.0";
@@ -763,6 +764,11 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
  * FileError.
  */ 
 VALUE HDFS_File_read(VALUE self, VALUE length) {
+  // Checks whether we're reading more data than HDFS client can support.
+  if (NUM2UINT(length) > HDFS_DEFAULT_BUFFER_SIZE) {
+    rb_raise(e_file_error, "Can only read a max of %u bytes from HDFS",
+        NUM2UINT(HDFS_DEFAULT_BUFFER_SIZE));
+  }
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
   ensure_file_open(data);
