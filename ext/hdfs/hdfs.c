@@ -767,7 +767,8 @@ VALUE HDFS_File_read(VALUE self, VALUE length) {
   // Checks whether we're reading more data than HDFS client can support.
   if (NUM2UINT(length) > HDFS_DEFAULT_BUFFER_SIZE) {
     rb_raise(e_file_error, "Can only read a max of %u bytes from HDFS",
-        NUM2UINT(HDFS_DEFAULT_BUFFER_SIZE));
+        HDFS_DEFAULT_BUFFER_SIZE);
+    return Qnil;
   }
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
@@ -786,17 +787,19 @@ VALUE HDFS_File_read(VALUE self, VALUE length) {
  *    file.write(bytes) -> num_bytes_written
  *
  * Writes the string specified by bytes to the current file object, returning
- * the number of bytes read as an Integer.  If this fails, raises a FileError.
+ * the number of bytes written as an Integer.  If this fails, raises a
+ * FileError.
  */
 VALUE HDFS_File_write(VALUE self, VALUE bytes) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
   ensure_file_open(data);
-  tSize bytes_written = hdfsWrite(data->fs, data->file, RSTRING_PTR(bytes), RSTRING_LEN(bytes));
+  tSize bytes_written = hdfsWrite(data->fs, data->file, RSTRING_PTR(bytes),
+      RSTRING_LEN(bytes));
   if (bytes_written == -1) {
     rb_raise(e_file_error, "Failed to write data");
   }
-  return INT2NUM(bytes_written);
+  return UINT2NUM(bytes_written);
 }
 
 /**
@@ -810,11 +813,11 @@ VALUE HDFS_File_tell(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
   ensure_file_open(data);
-  tSize offset = hdfsTell(data->fs, data->file);
+  tOffset offset = hdfsTell(data->fs, data->file);
   if (offset == -1) {
     rb_raise(e_file_error, "Failed to read position");
   }
-  return INT2NUM(offset);
+  return ULONG2NUM(offset);
 }
 
 /**
