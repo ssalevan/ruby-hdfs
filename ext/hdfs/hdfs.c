@@ -849,8 +849,7 @@ VALUE HDFS_File_flush(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
   ensure_file_open(data);
-  int result = hdfsFlush(data->fs, data->file);
-  if (result != 0) {
+  if (hdfsFlush(data->fs, data->file) < 0) {
     rb_raise(e_file_error, "Flush failed");
   }
   return Qtrue;
@@ -867,8 +866,7 @@ VALUE HDFS_File_available(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
   ensure_file_open(data);
-  int result = hdfsAvailable(data->fs, data->file);
-  if (result == -1) {
+  if (hdfsAvailable(data->fs, data->file) < 0) {
     rb_raise(e_file_error, "Failed to get available data");
   }
   return INT2NUM(result);
