@@ -831,9 +831,8 @@ VALUE HDFS_File_seek(VALUE self, VALUE offset) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
   ensure_file_open(data);
-  int result = hdfsSeek(data->fs, data->file, NUM2UINT(offset));
-  if (result != 0) {
-    rb_raise(e_file_error, "Failed to seek to position %u", NUM2UINT(offset));
+  if (hdfsSeek(data->fs, data->file, NUM2ULONG(offset)) < 0) {
+    rb_raise(e_file_error, "Failed to seek to position %u", NUM2ULONG(offset));
   }
   return Qtrue;
 }
