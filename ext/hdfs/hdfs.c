@@ -422,7 +422,7 @@ VALUE HDFS_File_System_cwd(VALUE self) {
     rb_raise(e_dfs_exception, "Failed to get current working directory");
     return Qnil;
   }
-  return rb_str_new2(cur_dir);
+  return rb_tainted_str_new2(cur_dir);
 }
 
 /**
@@ -779,7 +779,7 @@ VALUE HDFS_File_read(VALUE self, VALUE length) {
   if (bytes_read == -1) {
     rb_raise(e_file_error, "Failed to read data");
   }
-  return rb_tainted_str_new2(buffer);
+  return rb_tainted_str_new(buffer, bytes_read);
 }
 
 /**
