@@ -20,12 +20,12 @@ static VALUE e_could_not_open;
 static VALUE e_does_not_exist;
 
 static const int32_t HDFS_DEFAULT_BUFFER_SIZE    = 131072;
-static const int16_t HDFS_DEFAULT_REPLICATION    = 3;
-static const short HDFS_DEFAULT_MODE             = 0644;
 static const char* HDFS_DEFAULT_HOST             = "0.0.0.0";
-static const int HDFS_DEFAULT_RECURSIVE_DELETE   = 0;
+static const short HDFS_DEFAULT_MODE             = 0644;
 static const int HDFS_DEFAULT_PATH_STRING_LENGTH = 1024;
 static const int HDFS_DEFAULT_PORT               = 8020;
+static const int HDFS_DEFAULT_RECURSIVE_DELETE   = 0;
+static const int16_t HDFS_DEFAULT_REPLICATION    = 3;
 static const char* HDFS_DEFAULT_USER             = NULL;
 
 /*
@@ -866,10 +866,11 @@ VALUE HDFS_File_available(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
   ensure_file_open(data);
-  if (hdfsAvailable(data->fs, data->file) < 0) {
+  int bytes_available = hdfsAvailable(data->fs, data->file);
+  if (bytes_available < 0) {
     rb_raise(e_file_error, "Failed to get available data");
   }
-  return INT2NUM(result);
+  return INT2NUM(bytes_available);
 }
 
 /**
