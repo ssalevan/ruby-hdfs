@@ -1146,7 +1146,7 @@ void Init_hdfs() {
   rb_define_method(c_file_system, "utime", HDFS_File_System_utime, -1);
 
   c_file = rb_define_class_under(m_dfs, "File", rb_cObject);
-  rb_define_method(c_file, "read", HDFS_File_read, 1);
+  rb_define_method(c_file, "read", HDFS_File_read, -1);
   rb_define_method(c_file, "write", HDFS_File_write, 1);
   rb_define_method(c_file, "<<", HDFS_File_write, 1);
   rb_define_method(c_file, "seek", HDFS_File_seek, 1);
