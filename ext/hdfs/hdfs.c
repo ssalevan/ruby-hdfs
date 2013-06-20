@@ -763,9 +763,15 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
  * returning the bytes read as a String.  If this fails, raises a
  * FileError.
  */ 
-VALUE HDFS_File_read(VALUE self, VALUE length) {
+VALUE HDFS_File_read(int argc, VALUE* argv, VALUE self) {
+  VALUE length;
+  rb_scan_args(argc, argv, "01", &length);
+  unsigned int hdfsLength = HDFS_DEFAULT_BUFFER_SIZE;
+  if (!NIL_P(length)) {
+    hdfsLength = NUM2UINT(length);
+  }
   // Checks whether we're reading more data than HDFS client can support.
-  if (NUM2UINT(length) > HDFS_DEFAULT_BUFFER_SIZE) {
+  if (hdfsLength > HDFS_DEFAULT_BUFFER_SIZE) {
     rb_raise(e_file_error, "Can only read a max of %u bytes from HDFS",
         HDFS_DEFAULT_BUFFER_SIZE);
     return Qnil;
@@ -775,11 +781,13 @@ VALUE HDFS_File_read(VALUE self, VALUE length) {
   ensure_file_open(data);
   char* buffer = ALLOC_N(char, length);
   MEMZERO(buffer, char, length);
-  tSize bytes_read = hdfsRead(data->fs, data->file, buffer, NUM2UINT(length));
+  tSize bytes_read = hdfsRead(data->fs, data->file, buffer, hdfsLength);
   if (bytes_read == -1) {
     rb_raise(e_file_error, "Failed to read data");
   }
-  return rb_tainted_str_new(buffer, bytes_read);
+  VALUE string_output = rb_tainted_str_new(buffer, bytes_read);
+  xfree(buffer);
+  return string_output;
 }
 
 /**
