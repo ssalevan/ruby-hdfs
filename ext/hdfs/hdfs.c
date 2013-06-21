@@ -679,7 +679,7 @@ VALUE HDFS_File_System_used(VALUE self) {
   tOffset used = hdfsGetUsed(data->fs);
   if (used == -1) {
     rb_raise(e_dfs_exception, "Error while retrieving used capacity: %s",
-        get_error(errno);
+        get_error(errno));
     return Qnil;
   }
   return LONG2NUM(used);
