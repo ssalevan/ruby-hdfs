@@ -19,7 +19,7 @@ static VALUE e_file_error;
 static VALUE e_could_not_open;
 static VALUE e_does_not_exist;
 
-static const int32_t HDFS_DEFAULT_BUFFER_SIZE    = 131072;
+static const tSize HDFS_DEFAULT_BUFFER_SIZE      = 131072;
 static const char* HDFS_DEFAULT_HOST             = "0.0.0.0";
 static const short HDFS_DEFAULT_MODE             = 0644;
 static const int HDFS_DEFAULT_PATH_STRING_LENGTH = 1024;
@@ -779,9 +779,9 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
 VALUE HDFS_File_read(int argc, VALUE* argv, VALUE self) {
   VALUE length;
   rb_scan_args(argc, argv, "01", &length);
-  unsigned int hdfsLength = HDFS_DEFAULT_BUFFER_SIZE;
+  tSize hdfsLength = HDFS_DEFAULT_BUFFER_SIZE;
   if (!NIL_P(length)) {
-    hdfsLength = NUM2UINT(length);
+    hdfsLength = NUM2INT(length);
   }
   // Checks whether we're reading more data than HDFS client can support.
   if (hdfsLength > HDFS_DEFAULT_BUFFER_SIZE) {
