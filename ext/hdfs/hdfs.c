@@ -439,8 +439,8 @@ VALUE HDFS_File_System_chgrp(VALUE self, VALUE path, VALUE group) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   if (hdfsChown(data->fs, RSTRING_PTR(path), NULL, RSTRING_PTR(group)) == -1) {
-    rb_raise(e_dfs_exception, "Failed to chgrp path %s to group %s: %s",
-        RSTRING_PTR(path), RSTRING_PTR(group), strerror(errno));
+    rb_raise(e_dfs_exception, "Failed to chgrp path %s to group %s",
+        RSTRING_PTR(path), RSTRING_PTR(group));
     return Qnil;
   }
   return Qtrue;
@@ -465,9 +465,9 @@ VALUE HDFS_File_System_chmod(int argc, VALUE* argv, VALUE self) {
   } else {
     hdfs_mode = octal_decimal(NUM2INT(mode));
   }
-  if (hdfsChmod(data->fs, RSTRING_PTR(path), hdfs_mode) < 0){
-    rb_raise(e_dfs_exception, "Failed to chmod path %s to mode %d: %s",
-        RSTRING_PTR(path), hdfs_mode, strerror(errno));
+  if (hdfsChmod(data->fs, RSTRING_PTR(path), hdfs_mode) == -1){
+    rb_raise(e_dfs_exception, "Failed to chmod path %s to mode %d",
+        RSTRING_PTR(path), hdfs_mode);
     return Qnil;
   }
   return Qtrue;
@@ -484,8 +484,8 @@ VALUE HDFS_File_System_chown(VALUE self, VALUE path, VALUE owner) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   if (hdfsChown(data->fs, RSTRING_PTR(path), RSTRING_PTR(owner), NULL) == -1) {
-    rb_raise(e_dfs_exception, "Failed to chown user path %s to user %s: %s",
-        RSTRING_PTR(path), RSTRING_PTR(owner), strerror(errno));
+    rb_raise(e_dfs_exception, "Failed to chown user path %s to user %s",
+        RSTRING_PTR(path), RSTRING_PTR(owner));
     return Qnil;
   }
   return Qtrue;
