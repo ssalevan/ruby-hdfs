@@ -436,7 +436,7 @@ VALUE HDFS_File_System_cwd(VALUE self) {
   Data_Get_Struct(self, FSData, data);
   char* hdfsCurDir = ALLOC_N(char, HDFS_DEFAULT_STRING_LENGTH);
   if (hdfsGetWorkingDirectory(data->fs, hdfsCurDir,
-          HDFS_DEFAULT_STRING_LENGTH) == -1) {
+          HDFS_DEFAULT_STRING_LENGTH) == NULL) {
     xfree(hdfsCurDir);
     rb_raise(e_dfs_exception, "Failed to get current working directory: %s",
         get_error(errno));
@@ -498,7 +498,7 @@ VALUE HDFS_File_System_chmod(int argc, VALUE* argv, VALUE self) {
 VALUE HDFS_File_System_chown(VALUE self, VALUE path, VALUE owner) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  if (hdfsChown(data->fs, get_string(path), get_string(owner)), NULL) == -1) {
+  if (hdfsChown(data->fs, get_string(path), get_string(owner), NULL) == -1) {
     rb_raise(e_dfs_exception, "Failed to chown user path %s to user %s: %s",
         get_string(path), get_string(owner), get_error(errno));
     return Qnil;
@@ -645,12 +645,12 @@ VALUE HDFS_File_System_get_hosts(VALUE self, VALUE path, VALUE start,
     VALUE length) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  char*** hosts = hdfsGetHosts(data->fs, get_string(path), get_string(start),
+  char*** hosts = hdfsGetHosts(data->fs, get_string(path), NUM2LONG(start),
       NUM2LONG(length));
   if (hosts == NULL) {
     rb_raise(e_dfs_exception,
-        "Error while retrieving hosts at path: %s, start: %lu, length: %lu: "
-        "%s", get_string(path), get_string(start), NUM2LONG(length),
+        "Error while retrieving hosts at path: %s, start: %lu, length: %lu: %s",
+        get_string(path), get_string(start), NUM2LONG(length),
         get_error(errno));
     return Qnil;
   }
