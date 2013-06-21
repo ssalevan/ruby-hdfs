@@ -481,7 +481,7 @@ VALUE HDFS_File_System_chmod(int argc, VALUE* argv, VALUE self) {
   }
   if (hdfsChmod(data->fs, RSTRING_PTR(path), hdfs_mode) == -1){
     rb_raise(e_dfs_exception, "Failed to chmod path %s to mode %d: %s",
-        RSTRING_PTR(path), hdfs_mode, get_error(errno));
+        RSTRING_PTR(path), decimal_octal(hdfs_mode), get_error(errno));
     return Qnil;
   }
   return Qtrue;
