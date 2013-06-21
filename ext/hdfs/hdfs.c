@@ -427,12 +427,12 @@ VALUE HDFS_File_System_cwd(VALUE self) {
   char* hdfsCurDir = ALLOC_N(char, HDFS_DEFAULT_STRING_LENGTH);
   if (hdfsGetWorkingDirectory(data->fs, hdfsCurDir,
           HDFS_DEFAULT_STRING_LENGTH) == -1) {
-    free(cur_dir);
+    free(hdfsCurDir);
     rb_raise(e_dfs_exception, "Failed to get current working directory: %s",
         get_error(errno));
     return Qnil;
   }
-  VALUE cur
+  VALUE cur_dir = rb_str_new2(hdfsCurDir);
   return rb_tainted_str_new2(cur_dir);
 }
 
@@ -756,7 +756,7 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
       RTEST(r_replication) ? NUM2INT(r_replication) : 0,
       RTEST(r_block_size) ? NUM2INT(r_block_size) : 0);
   if (file == NULL) {
-    rb_raise(e_could_not_open, "Could not open file %s", RSTRING_PTR(path),
+    rb_raise(e_could_not_open, "Could not open file %s: %s", RSTRING_PTR(path),
         get_error(errno));
     return Qnil;
   }
@@ -885,7 +885,7 @@ VALUE HDFS_File_seek(VALUE self, VALUE offset) {
   Data_Get_Struct(self, FileData, data);
   ensure_file_open(data);
   if (hdfsSeek(data->fs, data->file, NUM2ULONG(offset)) == -1) {
-    rb_raise(e_file_error, "Failed to seek to position %u: %s",
+    rb_raise(e_file_error, "Failed to seek to position %lu: %s",
         NUM2ULONG(offset), get_error(errno));
   }
   return Qtrue;
