@@ -119,6 +119,10 @@ void ensure_file_open(FileData* data) {
 
 /* Returns a string representation of errno in a thread-safe manner. */
 char* get_error(int errnum) {
+  // Renames EINTERNAL to something a bit saner.
+  if (errnum == 255) {
+    return RSTRING_PTR(rb_str_new2("Internal Error"));
+  }
   char* buffer = ALLOC_N(char, HDFS_DEFAULT_STRING_LENGTH);
   strerror_r(errnum, buffer, HDFS_DEFAULT_STRING_LENGTH);
   // Wraps the buffer in a Ruby string so that it will be garbage collected.
@@ -334,8 +338,8 @@ VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
   hdfsFileInfo* infos = hdfsListDirectory(data->fs, RSTRING_PTR(path),
       &num_files);
   if (infos == NULL) {
-    rb_raise(e_does_not_exist, "Directory does not exist: %s",
-        RSTRING_PTR(path));
+    rb_raise(e_does_not_exist, "Directory %s does not exist: %s",
+        RSTRING_PTR(path), get_error(errno));
     return Qnil;
   }
   int i;
@@ -360,7 +364,8 @@ VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
   Data_Get_Struct(self, FSData, data);
   hdfsFileInfo* info = hdfsGetPathInfo(data->fs, RSTRING_PTR(path));
   if (info == NULL) {
-    rb_raise(e_does_not_exist, "File does not exist: %s", RSTRING_PTR(path));
+    rb_raise(e_does_not_exist, "File %s does not exist: %s",
+        RSTRING_PTR(path), get_error(errno));
     return Qnil;
   }
   VALUE file_info = wrap_hdfsFileInfo(info);
@@ -447,8 +452,8 @@ VALUE HDFS_File_System_chgrp(VALUE self, VALUE path, VALUE group) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   if (hdfsChown(data->fs, RSTRING_PTR(path), NULL, RSTRING_PTR(group)) == -1) {
-    rb_raise(e_dfs_exception, "Failed to chgrp path %s to group %s",
-        RSTRING_PTR(path), RSTRING_PTR(group));
+    rb_raise(e_dfs_exception, "Failed to chgrp path %s to group %s: %s",
+        RSTRING_PTR(path), RSTRING_PTR(group), get_error(errno));
     return Qnil;
   }
   return Qtrue;
@@ -474,8 +479,8 @@ VALUE HDFS_File_System_chmod(int argc, VALUE* argv, VALUE self) {
     hdfs_mode = octal_decimal(NUM2INT(mode));
   }
   if (hdfsChmod(data->fs, RSTRING_PTR(path), hdfs_mode) == -1){
-    rb_raise(e_dfs_exception, "Failed to chmod path %s to mode %d",
-        RSTRING_PTR(path), hdfs_mode);
+    rb_raise(e_dfs_exception, "Failed to chmod path %s to mode %d: %s",
+        RSTRING_PTR(path), hdfs_mode, get_error(errno));
     return Qnil;
   }
   return Qtrue;
@@ -492,8 +497,8 @@ VALUE HDFS_File_System_chown(VALUE self, VALUE path, VALUE owner) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   if (hdfsChown(data->fs, RSTRING_PTR(path), RSTRING_PTR(owner), NULL) == -1) {
-    rb_raise(e_dfs_exception, "Failed to chown user path %s to user %s",
-        RSTRING_PTR(path), RSTRING_PTR(owner));
+    rb_raise(e_dfs_exception, "Failed to chown user path %s to user %s: %s",
+        RSTRING_PTR(path), RSTRING_PTR(owner), get_error(errno));
     return Qnil;
   }
   return Qtrue;
@@ -673,7 +678,8 @@ VALUE HDFS_File_System_used(VALUE self) {
   Data_Get_Struct(self, FSData, data);
   tOffset used = hdfsGetUsed(data->fs);
   if (used == -1) {
-    rb_raise(e_dfs_exception, "Error while retrieving used capacity");
+    rb_raise(e_dfs_exception, "Error while retrieving used capacity: %s",
+        get_error(errno);
     return Qnil;
   }
   return LONG2NUM(used);
@@ -706,8 +712,9 @@ VALUE HDFS_File_System_utime(int argc, VALUE* argv, VALUE self) {
   if (hdfsUtime(data->fs, RSTRING_PTR(path), hdfs_modified_time,
       hdfs_access_time) == -1) {
     rb_raise(e_dfs_exception,
-        "Error while setting modified time: %lu, access time: %lu at path: %s",
-        (long) hdfs_modified_time, (long) hdfs_access_time, RSTRING_PTR(path));
+        "Error while setting modified time %lu, access time %lu at path %s: %s",
+        (long) hdfs_modified_time, (long) hdfs_access_time, RSTRING_PTR(path),
+        get_error(errno));
     return Qnil;
   }
   return Qtrue;
@@ -956,8 +963,7 @@ VALUE HDFS_File_close(VALUE self) {
   Data_Get_Struct(self, FileData, data);
   if (data->file != NULL) {
     if (hdfsCloseFile(data->fs, data->file) < 0) {
-      rb_raise(e_file_error, "Could not close file: %s",
-          get_error(errno));
+      rb_raise(e_file_error, "Could not close file: %s", get_error(errno));
       return Qnil;
     }
     data->file = NULL;
