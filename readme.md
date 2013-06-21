@@ -37,7 +37,7 @@ IO.copy_stream File.open('/tmp/local_file', 'rb'),
 
 # copying and moving files from one HDFS to another
 
-another_dfs = Hadoop::DFS::FileSystem.new 'namenode2.domain.tld', 8020
+another_dfs = Hadoop::DFS::FileSystem.new host: 'namenode2.domain.tld', port: 8020
 dfs.copy '/tmp/remote_file', '/tmp/remote_file', another_dfs
  => true
 

@@ -19,7 +19,7 @@ static VALUE e_file_error;
 static VALUE e_could_not_open;
 static VALUE e_does_not_exist;
 
-static const int32_t HDFS_DEFAULT_BUFFER_SIZE    = 131072;
+static const tSize HDFS_DEFAULT_BUFFER_SIZE      = 131072;
 static const char* HDFS_DEFAULT_HOST             = "0.0.0.0";
 static const short HDFS_DEFAULT_MODE             = 0644;
 static const int HDFS_DEFAULT_PATH_STRING_LENGTH = 1024;
@@ -737,17 +737,15 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
       return Qnil;
     }
   }
-  if (NIL_P(options)) {
-    options = rb_hash_new();
-  }
+  options = NIL_P(options) ? rb_hash_new() : options;
   VALUE r_buffer_size = rb_hash_aref(options, rb_eval_string(":buffer_size"));
   VALUE r_replication = rb_hash_aref(options, rb_eval_string(":replication"));
   VALUE r_block_size = rb_hash_aref(options, rb_eval_string(":block_size"));
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  hdfsFile file = hdfsOpenFile(data->fs, RSTRING_PTR(path), flags, 
-      RTEST(r_buffer_size) ? NUM2INT(r_buffer_size) : 0, 
-      RTEST(r_replication) ? NUM2INT(r_replication) : 0, 
+  hdfsFile file = hdfsOpenFile(data->fs, RSTRING_PTR(path), flags,
+      RTEST(r_buffer_size) ? NUM2INT(r_buffer_size) : 0,
+      RTEST(r_replication) ? NUM2INT(r_replication) : 0,
       RTEST(r_block_size) ? NUM2INT(r_block_size) : 0);
   if (file == NULL) {
     rb_raise(e_could_not_open, "Could not open file %s", RSTRING_PTR(path));
@@ -776,10 +774,7 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
 VALUE HDFS_File_read(int argc, VALUE* argv, VALUE self) {
   VALUE length;
   rb_scan_args(argc, argv, "01", &length);
-  unsigned int hdfsLength = HDFS_DEFAULT_BUFFER_SIZE;
-  if (!NIL_P(length)) {
-    hdfsLength = NUM2UINT(length);
-  }
+  tSize hdfsLength = NIL_P(length) ? HDFS_DEFAULT_BUFFER_SIZE : NUM2INT(length);
   // Checks whether we're reading more data than HDFS client can support.
   if (hdfsLength > HDFS_DEFAULT_BUFFER_SIZE) {
     rb_raise(e_file_error, "Can only read a max of %u bytes from HDFS",
@@ -789,8 +784,7 @@ VALUE HDFS_File_read(int argc, VALUE* argv, VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
   ensure_file_open(data);
-  char* buffer = ALLOC_N(char, length);
-  MEMZERO(buffer, char, length);
+  char* buffer = ALLOC_N(char, hdfsLength);
   tSize bytes_read = hdfsRead(data->fs, data->file, buffer, hdfsLength);
   if (bytes_read == -1) {
     rb_raise(e_file_error, "Failed to read data: %s", strerror(errno));
