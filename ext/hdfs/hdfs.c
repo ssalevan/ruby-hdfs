@@ -775,7 +775,6 @@ VALUE HDFS_File_read(int argc, VALUE* argv, VALUE self) {
   Data_Get_Struct(self, FileData, data);
   ensure_file_open(data);
   char* buffer = ALLOC_N(char, hdfsLength);
-  MEMZERO(buffer, char, hdfsLength);
   tSize bytes_read = hdfsRead(data->fs, data->file, buffer, hdfsLength);
   if (bytes_read == -1) {
     rb_raise(e_file_error, "Failed to read data");
