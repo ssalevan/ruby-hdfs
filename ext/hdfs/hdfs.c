@@ -432,13 +432,14 @@ VALUE HDFS_File_System_cwd(VALUE self) {
   char* hdfsCurDir = ALLOC_N(char, HDFS_DEFAULT_STRING_LENGTH);
   if (hdfsGetWorkingDirectory(data->fs, hdfsCurDir,
           HDFS_DEFAULT_STRING_LENGTH) == -1) {
-    free(hdfsCurDir);
+    xfree(hdfsCurDir);
     rb_raise(e_dfs_exception, "Failed to get current working directory: %s",
         get_error(errno));
     return Qnil;
   }
   VALUE cur_dir = rb_str_new2(hdfsCurDir);
-  return rb_tainted_str_new2(cur_dir);
+  xfree(hdfsCurDir);
+  return cur_dir;
 }
 
 /**
