@@ -779,7 +779,7 @@ VALUE HDFS_File_read(int argc, VALUE* argv, VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
   ensure_file_open(data);
-  char* buffer = ALLOC_N(char, length);
+  char* buffer = ALLOC_N(char, hdfsLength);
   MEMZERO(buffer, char, length);
   tSize bytes_read = hdfsRead(data->fs, data->file, buffer, hdfsLength);
   if (bytes_read == -1) {
