@@ -665,8 +665,7 @@ VALUE HDFS_File_System_used(VALUE self) {
   Data_Get_Struct(self, FSData, data);
   tOffset used = hdfsGetUsed(data->fs);
   if (used == -1) {
-    rb_raise(e_dfs_exception, "Error while retrieving used capacity: %s",
-        strerror(errno));
+    rb_raise(e_dfs_exception, "Error while retrieving used capacity");
     return Qnil;
   }
   return LONG2NUM(used);
@@ -699,9 +698,8 @@ VALUE HDFS_File_System_utime(int argc, VALUE* argv, VALUE self) {
   if (hdfsUtime(data->fs, RSTRING_PTR(path), hdfs_modified_time,
       hdfs_access_time) == -1) {
     rb_raise(e_dfs_exception,
-        "Error while setting modified time: %lu, access time: %lu at path: "
-        "%s: %s", (long) hdfs_modified_time, (long) hdfs_access_time,
-        RSTRING_PTR(path), strerror(errno));
+        "Error while setting modified time: %lu, access time: %lu at path: %s",
+        (long) hdfs_modified_time, (long) hdfs_access_time, RSTRING_PTR(path));
     return Qnil;
   }
   return Qtrue;
@@ -752,8 +750,7 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
       RTEST(r_replication) ? NUM2INT(r_replication) : 0, 
       RTEST(r_block_size) ? NUM2INT(r_block_size) : 0);
   if (file == NULL) {
-    rb_raise(e_could_not_open, "Could not open file %s: %s",
-        RSTRING_PTR(path), strerror(errno));
+    rb_raise(e_could_not_open, "Could not open file %s", RSTRING_PTR(path));
     return Qnil;
   }
   FileData* file_data = ALLOC_N(FileData, 1);
@@ -796,8 +793,7 @@ VALUE HDFS_File_read(int argc, VALUE* argv, VALUE self) {
   MEMZERO(buffer, char, length);
   tSize bytes_read = hdfsRead(data->fs, data->file, buffer, hdfsLength);
   if (bytes_read == -1) {
-    rb_raise(e_file_error, "Failed to read data: %s",
-        strerror(errno));
+    rb_raise(e_file_error, "Failed to read data: %s", strerror(errno));
   }
   VALUE string_output = rb_tainted_str_new(buffer, bytes_read);
   xfree(buffer);
@@ -833,8 +829,7 @@ VALUE HDFS_File_read_pos(int argc, VALUE* argv, VALUE self) {
   tSize bytes_read = hdfsPread(data->fs, data->file, NUM2ULONG(position),
       buffer, hdfsLength);
   if (bytes_read == -1) {
-    rb_raise(e_file_error, "Failed to read data: %s",
-        strerror(errno));
+    rb_raise(e_file_error, "Failed to read data: %s", strerror(errno));
   }
   VALUE string_output = rb_tainted_str_new(buffer, bytes_read);
   xfree(buffer);
@@ -856,8 +851,7 @@ VALUE HDFS_File_write(VALUE self, VALUE bytes) {
   tSize bytes_written = hdfsWrite(data->fs, data->file, RSTRING_PTR(bytes),
       RSTRING_LEN(bytes));
   if (bytes_written == -1) {
-    rb_raise(e_file_error, "Failed to write data: %s",
-        strerror(errno));
+    rb_raise(e_file_error, "Failed to write data: %s", strerror(errno));
   }
   return UINT2NUM(bytes_written);
 }
@@ -875,8 +869,7 @@ VALUE HDFS_File_tell(VALUE self) {
   ensure_file_open(data);
   tOffset offset = hdfsTell(data->fs, data->file);
   if (offset == -1) {
-    rb_raise(e_file_error, "Failed to read position: %s",
-        strerror(errno));
+    rb_raise(e_file_error, "Failed to read position: %s", strerror(errno));
   }
   return ULONG2NUM(offset);
 }
