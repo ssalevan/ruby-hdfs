@@ -119,7 +119,7 @@ void ensure_file_open(FileData* data) {
 
 /* Returns a string representation of errno in a thread-safe manner. */
 char* get_error(int errnum) {
-  // Renames EINTERNAL to something a bit saner.
+  // Renames EINTERNAL to something a bit more intelligible.
   if (errnum == 255) {
     return RSTRING_PTR(rb_str_new2("Internal Error"));
   }
@@ -195,10 +195,11 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
   VALUE options;
   rb_scan_args(argc, argv, "01", &options);
 
-  if (TYPE(options) != T_HASH) {
-    rb_raise(e_dfs_exception, "options must be of type Hash");
-  }
+  // Sets default values for keyword args, type-checks supplied value.
   options = NIL_P(options) ? rb_hash_new() : options;
+  if (TYPE(options) != T_HASH) {
+    rb_raise(rb_eArgError, "options must be of type Hash");
+  }
 
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
@@ -452,7 +453,8 @@ VALUE HDFS_File_System_cwd(VALUE self) {
 VALUE HDFS_File_System_chgrp(VALUE self, VALUE path, VALUE group) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  if (hdfsChown(data->fs, RSTRING_PTR(path), NULL, RSTRING_PTR(group)) == -1) {
+  if (hdfsChown(data->fs, RSTRING_PTR(rb_any_to_s(path)), NULL,
+          RSTRING_PTR(rb_any_to_s(group))) == -1) {
     rb_raise(e_dfs_exception, "Failed to chgrp path %s to group %s: %s",
         RSTRING_PTR(path), RSTRING_PTR(group), get_error(errno));
     return Qnil;
@@ -479,7 +481,7 @@ VALUE HDFS_File_System_chmod(int argc, VALUE* argv, VALUE self) {
   } else {
     hdfs_mode = octal_decimal(NUM2INT(mode));
   }
-  if (hdfsChmod(data->fs, RSTRING_PTR(path), hdfs_mode) == -1){
+  if (hdfsChmod(data->fs, RSTRING_PTR(rb_any_to_s(path)), hdfs_mode) == -1) {
     rb_raise(e_dfs_exception, "Failed to chmod path %s to mode %d: %s",
         RSTRING_PTR(path), decimal_octal(hdfs_mode), get_error(errno));
     return Qnil;
@@ -497,7 +499,8 @@ VALUE HDFS_File_System_chmod(int argc, VALUE* argv, VALUE self) {
 VALUE HDFS_File_System_chown(VALUE self, VALUE path, VALUE owner) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  if (hdfsChown(data->fs, RSTRING_PTR(path), RSTRING_PTR(owner), NULL) == -1) {
+  if (hdfsChown(data->fs, RSTRING_PTR(rb_any_to_s(path)),
+          RSTRING_PTR(rb_any_to_s(owner)), NULL) == -1) {
     rb_raise(e_dfs_exception, "Failed to chown user path %s to user %s: %s",
         RSTRING_PTR(path), RSTRING_PTR(owner), get_error(errno));
     return Qnil;
@@ -530,8 +533,8 @@ VALUE HDFS_File_System_copy(int argc, VALUE* argv, VALUE self) {
       return Qnil;
     }
   }
-  if (hdfsCopy(data->fs, RSTRING_PTR(from_path), destFS, 
-      RSTRING_PTR(to_path)) == -1) {
+  if (hdfsCopy(data->fs, RSTRING_PTR(rb_any_to_s(from_path)), destFS, 
+      RSTRING_PTR(rb_any_to_s(to_path))) == -1) {
     rb_raise(e_dfs_exception, "Failed to copy path: %s to path: %s: %s",
         RSTRING_PTR(from_path), RSTRING_PTR(to_path),
         get_error(errno));
@@ -565,10 +568,10 @@ VALUE HDFS_File_System_move(int argc, VALUE* argv, VALUE self) {
       return Qnil;
     }
   }
-  if (hdfsMove(data->fs, RSTRING_PTR(from_path), destFS,
-      RSTRING_PTR(to_path)) == -1) {
+  if (hdfsMove(data->fs, RSTRING_PTR(rb_any_to_s(from_path)), destFS,
+          RSTRING_PTR(rb_any_to_s(to_path))) == -1) {
     rb_raise(e_dfs_exception, "Error while moving path %s to path %s: %s",
-        RSTRING_PTR(from_path), RSTRING_PTR(to_path),
+        RSTRING_PTR(rb_any_to_s(from_path)), RSTRING_PTR(rb_any_to_s(to_path)),
         get_error(errno));
     return Qnil;
   }
@@ -605,7 +608,7 @@ VALUE HDFS_File_System_default_block_size(VALUE self) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   long block_size = hdfsGetDefaultBlockSize(data->fs);
-  if (block_size < 0) {
+  if (block_size == -1) {
     rb_raise(e_dfs_exception, "Error while retrieving default block size: %s",
         get_error(errno));
     return Qnil;
@@ -623,8 +626,9 @@ VALUE HDFS_File_System_default_block_size(VALUE self) {
 VALUE HDFS_File_System_default_block_size_at_path(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  long block_size = hdfsGetDefaultBlockSizeAtPath(data->fs, RSTRING_PTR(path));
-  if (block_size < 0) {
+  long block_size = hdfsGetDefaultBlockSizeAtPath(data->fs,
+      RSTRING_PTR(rb_any_to_s(path)));
+  if (block_size == -1) {
     rb_raise(e_dfs_exception,
         "Error while retrieving default block size at path %s: %s",
         RSTRING_PTR(path), get_error(errno));
@@ -759,7 +763,7 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
   VALUE r_block_size = rb_hash_aref(options, rb_eval_string(":block_size"));
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  hdfsFile file = hdfsOpenFile(data->fs, RSTRING_PTR(path), flags,
+  hdfsFile file = hdfsOpenFile(data->fs, RSTRING_PTR(rb_any_to_s(path)), flags,
       RTEST(r_buffer_size) ? NUM2INT(r_buffer_size) : 0,
       RTEST(r_replication) ? NUM2INT(r_replication) : 0,
       RTEST(r_block_size) ? NUM2INT(r_block_size) : 0);
