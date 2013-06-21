@@ -739,17 +739,15 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
       return Qnil;
     }
   }
-  if (NIL_P(options)) {
-    options = rb_hash_new();
-  }
+  options = NIL_P(options) ? rb_hash_new() : options;
   VALUE r_buffer_size = rb_hash_aref(options, rb_eval_string(":buffer_size"));
   VALUE r_replication = rb_hash_aref(options, rb_eval_string(":replication"));
   VALUE r_block_size = rb_hash_aref(options, rb_eval_string(":block_size"));
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  hdfsFile file = hdfsOpenFile(data->fs, RSTRING_PTR(path), flags, 
-      RTEST(r_buffer_size) ? NUM2INT(r_buffer_size) : 0, 
-      RTEST(r_replication) ? NUM2INT(r_replication) : 0, 
+  hdfsFile file = hdfsOpenFile(data->fs, RSTRING_PTR(path), flags,
+      RTEST(r_buffer_size) ? NUM2INT(r_buffer_size) : 0,
+      RTEST(r_replication) ? NUM2INT(r_replication) : 0,
       RTEST(r_block_size) ? NUM2INT(r_block_size) : 0);
   if (file == NULL) {
     rb_raise(e_could_not_open, "Could not open file %s: %s",
@@ -779,10 +777,7 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
 VALUE HDFS_File_read(int argc, VALUE* argv, VALUE self) {
   VALUE length;
   rb_scan_args(argc, argv, "01", &length);
-  tSize hdfsLength = HDFS_DEFAULT_BUFFER_SIZE;
-  if (!NIL_P(length)) {
-    hdfsLength = NUM2INT(length);
-  }
+  tSize hdfsLength = NIL_P(length) ? HDFS_DEFAULT_BUFFER_SIZE : NUM2INT(length);
   // Checks whether we're reading more data than HDFS client can support.
   if (hdfsLength > HDFS_DEFAULT_BUFFER_SIZE) {
     rb_raise(e_file_error, "Can only read a max of %u bytes from HDFS",
@@ -792,8 +787,7 @@ VALUE HDFS_File_read(int argc, VALUE* argv, VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
   ensure_file_open(data);
-  char* buffer = ALLOC_N(char, length);
-  MEMZERO(buffer, char, length);
+  char* buffer = ALLOC_N(char, hdfsLength);
   tSize bytes_read = hdfsRead(data->fs, data->file, buffer, hdfsLength);
   if (bytes_read == -1) {
     rb_raise(e_file_error, "Failed to read data: %s",
