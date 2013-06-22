@@ -124,11 +124,11 @@ char* get_error(int errnum) {
     return RSTRING_PTR(rb_str_new2("Internal Error"));
   }
   char* buffer = ALLOC_N(char, HDFS_DEFAULT_STRING_LENGTH);
-  strerror_r(errnum, buffer, HDFS_DEFAULT_STRING_LENGTH);
-  // Wraps the buffer in a Ruby string so that it will be garbage collected.
-  VALUE error_value = rb_str_new2(buffer);
+  char* error_string = strerror_r(errnum, buffer, HDFS_DEFAULT_STRING_LENGTH);
+  // Wraps the message in a Ruby string so that it will be garbage collected.
+  VALUE error_msg = rb_str_new2(error_string);
   xfree(buffer);
-  return RSTRING_PTR(error_value);
+  return RSTRING_PTR(error_msg);
 }
 
 /* Calls <obj>.to_s and returns a pointer to its underlying char array. */
@@ -343,7 +343,7 @@ VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
   hdfsFileInfo* infos = hdfsListDirectory(data->fs, get_string(path),
       &num_files);
   if (infos == NULL) {
-    rb_raise(e_does_not_exist, "Directory %s does not exist: %s",
+    rb_raise(e_does_not_exist, "Failed to list directory %s: %s",
         get_string(path), get_error(errno));
     return Qnil;
   }
@@ -369,7 +369,7 @@ VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
   Data_Get_Struct(self, FSData, data);
   hdfsFileInfo* info = hdfsGetPathInfo(data->fs, get_string(path));
   if (info == NULL) {
-    rb_raise(e_does_not_exist, "File %s does not exist: %s",
+    rb_raise(e_does_not_exist, "Failed to stat file %s: %s",
         get_string(path), get_error(errno));
     return Qnil;
   }
