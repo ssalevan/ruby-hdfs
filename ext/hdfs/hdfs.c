@@ -339,11 +339,11 @@ VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   VALUE file_infos = rb_ary_new();
-  int num_files = 0;
+  int num_files = -1;
   hdfsFileInfo* infos = hdfsListDirectory(data->fs, get_string(path),
       &num_files);
-  if (infos == NULL) {
-    rb_raise(e_does_not_exist, "Failed to list directory %s: %s",
+  if (infos == NULL && num_files == -1) {
+    rb_raise(e_dfs_exception, "Failed to list directory %s: %s",
         get_string(path), get_error(errno));
     return Qnil;
   }
@@ -389,13 +389,9 @@ VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
 VALUE HDFS_File_System_set_replication(int argc, VALUE* argv, VALUE self) {
   VALUE path, replication;
   rb_scan_args(argc, argv, "11", &path, &replication);
-  int hdfs_replication;
   // If no replication value is supplied, uses default replication value.
-  if (NIL_P(replication)) {
-    hdfs_replication = HDFS_DEFAULT_REPLICATION;
-  } else {
-    hdfs_replication = NUM2INT(replication);
-  }
+  int hdfs_replication = NIL_P(replication) ? HDFS_DEFAULT_REPLICATION :
+      NUM2INT(replication);
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   if (hdfsSetReplication(data->fs, get_string(path), hdfs_replication) < 0) {
@@ -859,8 +855,8 @@ VALUE HDFS_File_write(VALUE self, VALUE bytes) {
  * call-seq:
  *    file.tell -> current_position
  *
- * Returns the current byte position in the file as an Integer.  If this fails,
- * raises a FileError.
+ * Returns the current byte position in bytes of the file as an Integer.
+ * If this fails, raises a FileError.
  */
 VALUE HDFS_File_tell(VALUE self) {
   FileData* data = NULL;
@@ -877,8 +873,8 @@ VALUE HDFS_File_tell(VALUE self) {
  * call-seq:
  *    file.seek(offset) -> success
  *
- * Seeks the file pointer to the supplied offset.  If this fails, raises a
- * FileError.
+ * Seeks the file pointer to the supplied offset in bytes.  If this fails,
+ * raises a FileError.
  */
 VALUE HDFS_File_seek(VALUE self, VALUE offset) {
   FileData* data = NULL;
@@ -955,7 +951,7 @@ VALUE HDFS_File_close(VALUE self) {
   FileData* data = NULL;
   Data_Get_Struct(self, FileData, data);
   if (data->file != NULL) {
-    if (hdfsCloseFile(data->fs, data->file) < 0) {
+    if (hdfsCloseFile(data->fs, data->file) == -1) {
       rb_raise(e_file_error, "Could not close file: %s", get_error(errno));
       return Qnil;
     }
@@ -1004,7 +1000,7 @@ VALUE HDFS_File_write_open(VALUE self) {
  * call-seq:
  *    file_info.block_size -> retval
  *
- * Returns the block size of the file described by this object.
+ * Returns the block size in bytes of the file described by this object.
  */
 VALUE HDFS_File_Info_block_size(VALUE self) {
   FileInfo* file_info = NULL;
@@ -1071,7 +1067,7 @@ VALUE HDFS_File_Info_File_is_file(VALUE self) {
  *    file_info.last_access -> retval
  *
  * Returns the time of last access as an Integer representing seconds since the
- * epoch.
+ * UNIX epoch.
  */
 VALUE HDFS_File_Info_last_access(VALUE self) {
   FileInfo* file_info = NULL;
@@ -1084,7 +1080,7 @@ VALUE HDFS_File_Info_last_access(VALUE self) {
  *    file_info.last_modified -> retval
  *
  * Returns the time of last modification as an Integer representing seconds
- * since the epoch for the file
+ * since the UNIX epoch for the file
  */
 VALUE HDFS_File_Info_last_modified(VALUE self) {
   FileInfo* file_info = NULL;
@@ -1097,7 +1093,7 @@ VALUE HDFS_File_Info_last_modified(VALUE self) {
  *    file_info.last_modified -> retval
  *
  * Returns the time of last modification as an Integer representing seconds
- * since the epoch.
+ * since the UNIX epoch.
  */
 VALUE HDFS_File_Info_mode(VALUE self) {
   FileInfo* file_info = NULL;
@@ -1164,8 +1160,7 @@ VALUE HDFS_File_Info_to_s(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
   // Introspects current class, returns it as a String.
-  VALUE class_string = rb_funcall(
-      rb_funcall(self, rb_intern("class"), 0),
+  VALUE class_string = rb_funcall(rb_funcall(self, rb_intern("class"), 0),
       rb_intern("to_s"), 0);
   char* output;
   VALUE string_value = rb_str_new2("");
