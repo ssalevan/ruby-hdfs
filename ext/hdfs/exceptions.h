@@ -4,11 +4,11 @@
 #include "ruby.h"
 
 
-static VALUE e_dfs_exception;
 static VALUE e_connect_error;
-static VALUE e_file_error;
 static VALUE e_could_not_open;
+static VALUE e_dfs_exception;
 static VALUE e_does_not_exist;
+static VALUE e_file_error;
 
 
 void init_Exceptions(VALUE parent);
