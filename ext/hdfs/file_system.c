@@ -497,7 +497,7 @@ VALUE HDFS_File_System_get_hosts(VALUE self, VALUE path, VALUE start,
       NUM2LONG(length));
   if (hosts == NULL) {
     rb_raise(e_dfs_exception,
-        "Error while retrieving hosts at path: %s, start: %lu, length: %lu: %s",
+        "Error while retrieving hosts at path: %s, start: %s, length: %lu: %s",
         get_string(path), get_string(start), NUM2LONG(length),
         get_error(errno));
     return Qnil;
@@ -543,7 +543,6 @@ VALUE HDFS_File_System_used(VALUE self) {
  */
 VALUE HDFS_File_System_utime(int argc, VALUE* argv, VALUE self) {
   VALUE path, modified_time, access_time;
-  tTime hdfs_modified_time, hdfs_access_time;
   rb_scan_args(argc, argv, "12", &path, &modified_time, &access_time);
   // Sets default values for last modified and/or last access time.
   tTime hdfsModifiedTime = NIL_P(modified_time) ? -1 : NUM2LONG(modified_time);
