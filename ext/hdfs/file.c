@@ -5,6 +5,14 @@
 #include "utils.h"
 
 
+typedef struct FileData {
+  hdfsFS fs;
+  hdfsFile file;
+} FileData;
+
+static VALUE c_file;
+
+
 /*
  * HDFS::File
  */
@@ -247,7 +255,7 @@ VALUE HDFS_File_write_open(VALUE self) {
   }
 }
 
-void init_HDFS_File(VALUE parent) {
+void init_file(VALUE parent) {
   c_file = rb_define_class_under(parent, "File", rb_cObject);
 
   rb_define_method(c_file, "read", HDFS_File_read, -1);

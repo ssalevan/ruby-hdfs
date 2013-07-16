@@ -8,6 +8,13 @@
 #include "hdfs.h"
 
 
+typedef struct FSData {
+  hdfsFS fs;
+} FSData;
+
+static VALUE c_file_system;
+
+
 /*
  * HDFS::FileSystem
  */
@@ -608,7 +615,7 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
   return file_instance;
 }
 
-void init_HDFS_File_System(VALUE parent) {
+void init_file_system(VALUE parent) {
   c_file_system = rb_define_class_under(parent, "FileSystem", rb_cObject);
   rb_define_alloc_func(c_file_system, HDFS_File_System_alloc);
 

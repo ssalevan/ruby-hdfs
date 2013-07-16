@@ -7,6 +7,22 @@
 #include <string.h>
 
 
+typedef struct FileInfo {
+  char* mName;         /* the name of the file */
+  tTime mLastMod;      /* the last modification time for the file in seconds */
+  tOffset mSize;       /* the size of the file in bytes */
+  short mReplication;  /* the count of replicas */
+  tOffset mBlockSize;  /* the block size for the file */
+  char* mOwner;        /* the owner of the file */
+  char* mGroup;        /* the group associated with the file */
+  short mPermissions;  /* the permissions associated with the file */
+  tTime mLastAccess;   /* the last access time for the file in seconds */
+} FileInfo;
+
+static VALUE c_file_info_file;
+static VALUE c_file_info_directory;
+
+
 /*
  * HDFS::FileInfo
  */
@@ -236,8 +252,8 @@ VALUE HDFS_File_Info_to_s(VALUE self) {
   return string_value;
 }
 
-void init_HDFS_File_Info(VALUE parent) {
-  c_file_info = rb_define_class_under(m_dfs, "FileInfo", rb_cObject);
+void init_file_info(VALUE parent) {
+  c_file_info = rb_define_class_under(parent, "FileInfo", rb_cObject);
 
   rb_define_method(c_file_info, "block_size", HDFS_File_Info_block_size, 0);
   rb_define_method(c_file_info, "group", HDFS_File_Info_group, 0);

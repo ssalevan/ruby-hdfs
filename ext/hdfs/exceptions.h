@@ -11,6 +11,6 @@ static VALUE e_does_not_exist;
 static VALUE e_file_error;
 
 
-void init_Exceptions(VALUE parent);
+void init_exceptions(VALUE parent);
 
 #endif /* HDFS_EXCEPTIONS_H */
