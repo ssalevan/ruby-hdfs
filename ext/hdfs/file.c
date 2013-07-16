@@ -5,6 +5,11 @@
 #include "utils.h"
 
 
+typedef struct FileData {
+  hdfsFS fs;
+  hdfsFile file;
+} FileData;
+
 static VALUE c_file;
 
 
@@ -24,6 +29,15 @@ void ensure_file_open(FileData* data) {
   if (data->file == NULL) {
     rb_raise(e_file_error, "File is closed");
   }
+}
+
+VALUE new_HDFS_File(hdfsFile* file, hdfsFS* fs) {
+  FileData* file_data = ALLOC_N(FileData, 1);
+  file_data->fs = *fs;
+  file_data->file = *file;
+  VALUE file_instance = Data_Wrap_Struct(c_file, NULL, free_file_data,
+      file_data);
+  return file_instance;
 }
 
 /**

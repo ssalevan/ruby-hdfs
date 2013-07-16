@@ -2,11 +2,16 @@
 
 #include "constants.h"
 #include "exceptions.h"
+#include "file.h"
 #include "file_info.h"
 #include "utils.h"
 
 #include "hdfs.h"
 
+
+typedef struct FSData {
+  hdfsFS fs;
+} FSData;
 
 static VALUE c_file_system;
 
@@ -197,7 +202,7 @@ VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
   int i;
   for (i = 0; i < num_files; i++) {
     hdfsFileInfo* cur_info = infos + i;
-    rb_ary_push(file_infos, wrap_hdfsFileInfo(cur_info));
+    rb_ary_push(file_infos, new_HDFS_File_Info(cur_info));
   }
   hdfsFreeFileInfo(infos, num_files);
   return file_infos;
@@ -220,7 +225,7 @@ VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
         get_string(path), get_error(errno));
     return Qnil;
   }
-  VALUE file_info = wrap_hdfsFileInfo(info);
+  VALUE file_info = new_HDFS_File_Info(info);
   hdfsFreeFileInfo(info, 1);
   return file_info;
 }
@@ -603,12 +608,7 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
         get_error(errno));
     return Qnil;
   }
-  FileData* file_data = ALLOC_N(FileData, 1);
-  file_data->fs = data->fs;
-  file_data->file = file;
-  VALUE file_instance = Data_Wrap_Struct(c_file, NULL, free_file_data,
-      file_data);
-  return file_instance;
+  return new_HDFS_File(&file, &data->fs);
 }
 
 void init_file_system(VALUE parent) {

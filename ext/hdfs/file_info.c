@@ -7,6 +7,18 @@
 #include <string.h>
 
 
+typedef struct FileInfo {
+  char* mName;         /* the name of the file */
+  tTime mLastMod;      /* the last modification time for the file in seconds */
+  tOffset mSize;       /* the size of the file in bytes */
+  short mReplication;  /* the count of replicas */
+  tOffset mBlockSize;  /* the block size for the file */
+  char* mOwner;        /* the owner of the file */
+  char* mGroup;        /* the group associated with the file */
+  short mPermissions;  /* the permissions associated with the file */
+  tTime mLastAccess;   /* the last access time for the file in seconds */
+} FileInfo;
+
 static VALUE c_file_info_file;
 static VALUE c_file_info_directory;
 
@@ -28,7 +40,7 @@ void free_file_info(FileInfo* file_info) {
  * Copies an hdfsFileInfo struct into a Hadoop::DFS::FileInfo derivative
  * object.
  */
-VALUE wrap_hdfsFileInfo(hdfsFileInfo* info) {
+VALUE new_HDFS_File_Info(hdfsFileInfo* info) {
   // Creates a FileInfo struct, populates it with information from the
   // supplied hdfsFileInfo struct.
   FileInfo* file_info = ALLOC_N(FileInfo, 1);

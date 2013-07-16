@@ -5,11 +5,7 @@
 #include "ruby.h"
 
 
-typedef struct FileData {
-  hdfsFS fs;
-  hdfsFile file;
-} FileData;
-
+VALUE new_HDFS_File(hdfsFile* file, hdfsFS* fs);
 
 void init_file(VALUE parent);
 
