@@ -5,6 +5,12 @@
 #include "ruby.h"
 
 
+typedef struct FileData {
+  hdfsFS fs;
+  hdfsFile file;
+} FileData;
+
+
 void init_file(VALUE parent);
 
 #endif /* HDFS_FILE_H */

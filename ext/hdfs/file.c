@@ -5,11 +5,6 @@
 #include "utils.h"
 
 
-typedef struct FileData {
-  hdfsFS fs;
-  hdfsFile file;
-} FileData;
-
 static VALUE c_file;
 
 

@@ -8,10 +8,6 @@
 #include "hdfs.h"
 
 
-typedef struct FSData {
-  hdfsFS fs;
-} FSData;
-
 static VALUE c_file_system;
 
 

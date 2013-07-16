@@ -13,8 +13,8 @@ static VALUE m_hdfs;
 void Init_hdfs() {
   m_hdfs = rb_define_module("HDFS");
 
-  init_Exceptions(m_hdfs);
-  init_HDFS_File(m_hdfs);
-  init_HDFS_File_Info(m_hdfs);
-  init_HDFS_File_System(m_hdfs);
+  init_exceptions(m_hdfs);
+  init_file(m_hdfs);
+  init_file_info(m_hdfs);
+  init_file_system(m_hdfs);
 }
