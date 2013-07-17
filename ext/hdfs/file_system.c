@@ -1,7 +1,6 @@
 #include "file_system.h"
 
 #include "constants.h"
-#include "exceptions.h"
 #include "file.h"
 #include "file_info.h"
 #include "utils.h"

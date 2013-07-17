@@ -1,7 +1,6 @@
 #include "ruby.h"
 #include "hdfs.h"
 
-#include "exceptions.h"
 #include "file.h"
 #include "file_info.h"
 #include "file_system.h"
