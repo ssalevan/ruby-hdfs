@@ -552,7 +552,7 @@ VALUE HDFS_File_System_set_replication(int argc, VALUE* argv, VALUE self) {
  *    hdfs.stat(path) -> file_info
  *
  * Stats the file or directory at the supplied path, returning a
- * Hadoop::DFS:FileInfo object corresponding to it.  If this fails, raises a
+ * Hadoop::DFS::FileInfo object corresponding to it.  If this fails, raises a
  * DFSException.
  */
 VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
