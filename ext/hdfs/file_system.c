@@ -552,15 +552,15 @@ VALUE HDFS_File_System_set_replication(int argc, VALUE* argv, VALUE self) {
  *    hdfs.stat(path) -> file_info
  *
  * Stats the file or directory at the supplied path, returning a
- * Hadoop::DFS:FileInfo object corresponding to it.  If the file or directory
- * does not exist, raises a DoesNotExistError.
+ * Hadoop::DFS:FileInfo object corresponding to it.  If this fails, raises a
+ * DFSException.
  */
 VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   hdfsFileInfo* info = hdfsGetPathInfo(data->fs, get_string(path));
   if (info == NULL) {
-    rb_raise(e_does_not_exist, "Failed to stat file %s: %s",
+    rb_raise(e_dfs_exception, "Failed to stat file %s: %s",
         get_string(path), get_error(errno));
     return Qnil;
   }
@@ -675,7 +675,5 @@ void init_file_system(VALUE parent) {
   e_connect_error = rb_define_class_under(parent, "ConnectError",
       e_dfs_exception);  
   e_could_not_open = rb_define_class_under(parent, "CouldNotOpenFileError",
-      e_dfs_exception);
-  e_does_not_exist = rb_define_class_under(parent, "DoesNotExistError",
       e_dfs_exception);
 }
