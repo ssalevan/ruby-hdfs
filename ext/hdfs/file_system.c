@@ -39,12 +39,12 @@ VALUE HDFS_File_System_alloc(VALUE klass) {
 
 /**
  * call-seq:
- *    hdfs.delete(path, recursive=false) -> success
+ *    hdfs.rm(path, recursive=false) -> success
  *
  * Deletes the file at the supplied path, recursively if specified.  Returns
  * True if successful, raises a DFSException if this fails.
  */
-VALUE HDFS_File_System_delete(int argc, VALUE* argv, VALUE self) {
+VALUE HDFS_File_System_rm(int argc, VALUE* argv, VALUE self) {
   VALUE path, recursive;
   rb_scan_args(argc, argv, "11", &path, &recursive);
   int hdfs_recursive = HDFS_DEFAULT_RECURSIVE_DELETE;
@@ -176,13 +176,13 @@ VALUE HDFS_File_System_chown(VALUE self, VALUE path, VALUE owner) {
 
 /**
  * call-seq:
- *    hdfs.copy(from_path, to_path, to_fs=nil) -> retval
+ *    hdfs.cp(from_path, to_path, to_fs=nil) -> retval
  *
  * Copies the file at HDFS location from_path to HDFS location to_path.  If
  * to_fs is specified, copies to this HDFS over the current HDFS.  If
  * successful, returns True; otherwise, raises a DFSException.
  */
-VALUE HDFS_File_System_copy(int argc, VALUE* argv, VALUE self) {
+VALUE HDFS_File_System_cp(int argc, VALUE* argv, VALUE self) {
   VALUE from_path, to_path, to_fs;
   rb_scan_args(argc, argv, "21", &from_path, &to_path, &to_fs);
   FSData* data = NULL;
@@ -377,12 +377,12 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
 
 /**
  * call-seq:
- *    hdfs.list_directory(path) -> file_infos
+ *    hdfs.ls(path) -> file_infos
  *
  * Lists the directory at the supplied path, returning an Array of
  * HDFS::FileInfo objects.  If this fails, raises a DFSException.
  */
-VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
+VALUE HDFS_File_System_ls(VALUE self, VALUE path) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   VALUE file_infos = rb_ary_new();
@@ -405,13 +405,13 @@ VALUE HDFS_File_System_list_directory(VALUE self, VALUE path) {
 
 /**
  * call-seq:
- *    hdfs.move(from_path, to_path, to_fs=nil) -> retval
+ *    hdfs.mv(from_path, to_path, to_fs=nil) -> retval
  *
  * Moves the file at HDFS location from_path to HDFS location to_path.  If
  * to_fs is specified, moves to this HDFS over the current HDFS.  If
  * successful, returns true; otherwise, returns false.
  */
-VALUE HDFS_File_System_move(int argc, VALUE* argv, VALUE self) {
+VALUE HDFS_File_System_mv(int argc, VALUE* argv, VALUE self) {
   VALUE from_path, to_path, to_fs;
   rb_scan_args(argc, argv, "21", &from_path, &to_path, &to_fs);
   FSData* data = NULL;
@@ -615,10 +615,10 @@ VALUE HDFS_File_System_utime(int argc, VALUE* argv, VALUE self) {
   VALUE r_atime = rb_hash_aref(options, rb_eval_string(":atime"));
   VALUE r_mtime = rb_hash_aref(options, rb_eval_string(":mtime"));
   // Converts any Time objects to seconds since the Unix epoch.
-  if (TYPE(r_atime) == T_TIME) {
+  if (CLASS_OF(r_atime) == rb_cTime) {
     r_atime = rb_funcall(r_atime, rb_intern("to_i"), 0);
   }
-  if (TYPE(r_mtime) == T_TIME) {
+  if (CLASS_OF(r_mtime) == rb_cTime) {
     r_mtime = rb_funcall(r_mtime, rb_intern("to_i"), 0);
   }
   // Sets default values for last modified and/or last access time.
@@ -646,9 +646,8 @@ void init_file_system(VALUE parent) {
   rb_define_method(c_file_system, "chgrp", HDFS_File_System_chgrp, 2);
   rb_define_method(c_file_system, "chmod", HDFS_File_System_chmod, -1);
   rb_define_method(c_file_system, "chown", HDFS_File_System_chown, 2);
-  rb_define_method(c_file_system, "copy", HDFS_File_System_copy, -1);
+  rb_define_method(c_file_system, "cp", HDFS_File_System_cp, -1);
   rb_define_method(c_file_system, "cwd", HDFS_File_System_cwd, 0);
-  rb_define_method(c_file_system, "delete", HDFS_File_System_delete, -1);
   rb_define_method(c_file_system, "disconnect", HDFS_File_System_disconnect,
       0);
   rb_define_method(c_file_system, "exist?", HDFS_File_System_exist, 1);
@@ -659,12 +658,12 @@ void init_file_system(VALUE parent) {
   rb_define_method(c_file_system, "get_hosts", HDFS_File_System_get_hosts, 3);
   rb_define_method(c_file_system, "initialize", HDFS_File_System_initialize,
       -1);
-  rb_define_method(c_file_system, "list_directory",
-      HDFS_File_System_list_directory, 1);
+  rb_define_method(c_file_system, "ls", HDFS_File_System_ls, 1);
   rb_define_method(c_file_system, "mkdir", HDFS_File_System_mkdir, 1);
-  rb_define_method(c_file_system, "move", HDFS_File_System_move, -1);
+  rb_define_method(c_file_system, "mv", HDFS_File_System_mv, -1);
   rb_define_method(c_file_system, "open", HDFS_File_System_open, -1);
   rb_define_method(c_file_system, "rename", HDFS_File_System_rename, 2);
+  rb_define_method(c_file_system, "rm", HDFS_File_System_rm, -1);
   rb_define_method(c_file_system, "stat", HDFS_File_System_stat, 1);
   rb_define_method(c_file_system, "set_replication",
       HDFS_File_System_set_replication, -1);
@@ -672,11 +671,11 @@ void init_file_system(VALUE parent) {
   rb_define_method(c_file_system, "utime", HDFS_File_System_utime, -1);
 
   e_dfs_exception = rb_define_class_under(parent, "DFSException",
-      rb_eStandardError);
+      rb_eException);
   e_connect_error = rb_define_class_under(parent, "ConnectError",
       e_dfs_exception);  
   e_could_not_open = rb_define_class_under(parent, "CouldNotOpenFileError",
-      e_file_error);
+      e_dfs_exception);
   e_does_not_exist = rb_define_class_under(parent, "DoesNotExistError",
-      e_file_error);
+      e_dfs_exception);
 }
