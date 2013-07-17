@@ -665,7 +665,7 @@ void init_file_system(VALUE parent) {
   rb_define_method(c_file_system, "rename", HDFS_File_System_rename, 2);
   rb_define_method(c_file_system, "rm", HDFS_File_System_rm, -1);
   rb_define_method(c_file_system, "stat", HDFS_File_System_stat, 1);
-  rb_define_method(c_file_system, "set_replication",
+  rb_define_method(c_file_system, "set_replication!",
       HDFS_File_System_set_replication, -1);
   rb_define_method(c_file_system, "used", HDFS_File_System_used, 0);
   rb_define_method(c_file_system, "utime", HDFS_File_System_utime, -1);

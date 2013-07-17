@@ -76,6 +76,18 @@ VALUE new_HDFS_File_Info(hdfsFileInfo* info) {
 
 /**
  * call-seq:
+ *    file_info.atime -> retval
+ *
+ * Returns the time of last file access as a Time object.
+ */
+VALUE HDFS_File_Info_atime(VALUE self) {
+  FileInfo* file_info = NULL;
+  Data_Get_Struct(self, FileInfo, file_info);
+  return rb_time_new(file_info->mLastAccess, 0);
+}
+
+/**
+ * call-seq:
  *    file_info.block_size -> retval
  *
  * Returns the block size in bytes of the file described by this object.
@@ -142,23 +154,11 @@ VALUE HDFS_File_Info_File_is_file(VALUE self) {
 
 /**
  * call-seq:
- *    file_info.last_access -> retval
- *
- * Returns the time of last file access as a Time object.
- */
-VALUE HDFS_File_Info_last_access(VALUE self) {
-  FileInfo* file_info = NULL;
-  Data_Get_Struct(self, FileInfo, file_info);
-  return rb_time_new(file_info->mLastAccess, 0);
-}
-
-/**
- * call-seq:
- *    file_info.last_modified -> retval
+ *    file_info.mtime -> retval
  *
  * Returns the time of last file modification as a Time object.
  */
-VALUE HDFS_File_Info_last_modified(VALUE self) {
+VALUE HDFS_File_Info_mtime(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
   return rb_time_new(file_info->mLastMod, 0);
@@ -253,14 +253,13 @@ VALUE HDFS_File_Info_to_s(VALUE self) {
 void init_file_info(VALUE parent) {
   c_file_info = rb_define_class_under(parent, "FileInfo", rb_cObject);
 
+  rb_define_method(c_file_info, "atime", HDFS_File_Info_last_access, 0);
   rb_define_method(c_file_info, "block_size", HDFS_File_Info_block_size, 0);
   rb_define_method(c_file_info, "group", HDFS_File_Info_group, 0);
   rb_define_method(c_file_info, "is_directory?", HDFS_File_Info_is_directory,
       0);
   rb_define_method(c_file_info, "is_file?", HDFS_File_Info_is_file, 0);
-  rb_define_method(c_file_info, "last_access", HDFS_File_Info_last_access, 0);
-  rb_define_method(c_file_info, "last_modified", HDFS_File_Info_last_modified,
-      0);
+  rb_define_method(c_file_info, "mtime", HDFS_File_Info_last_modified, 0);
   rb_define_method(c_file_info, "mode", HDFS_File_Info_mode, 0);
   rb_define_method(c_file_info, "name", HDFS_File_Info_name, 0);
   rb_define_method(c_file_info, "owner", HDFS_File_Info_owner, 0);
