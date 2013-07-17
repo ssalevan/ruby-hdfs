@@ -17,7 +17,6 @@ static VALUE c_file_system;
 static VALUE e_connect_error;
 static VALUE e_could_not_open;
 static VALUE e_dfs_exception;
-static VALUE e_does_not_exist;
 
 /*
  * HDFS::FileSystem
