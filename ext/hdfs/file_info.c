@@ -253,13 +253,13 @@ VALUE HDFS_File_Info_to_s(VALUE self) {
 void init_file_info(VALUE parent) {
   c_file_info = rb_define_class_under(parent, "FileInfo", rb_cObject);
 
-  rb_define_method(c_file_info, "atime", HDFS_File_Info_last_access, 0);
+  rb_define_method(c_file_info, "atime", HDFS_File_Info_atime, 0);
   rb_define_method(c_file_info, "block_size", HDFS_File_Info_block_size, 0);
   rb_define_method(c_file_info, "group", HDFS_File_Info_group, 0);
   rb_define_method(c_file_info, "is_directory?", HDFS_File_Info_is_directory,
       0);
   rb_define_method(c_file_info, "is_file?", HDFS_File_Info_is_file, 0);
-  rb_define_method(c_file_info, "mtime", HDFS_File_Info_last_modified, 0);
+  rb_define_method(c_file_info, "mtime", HDFS_File_Info_mtime, 0);
   rb_define_method(c_file_info, "mode", HDFS_File_Info_mode, 0);
   rb_define_method(c_file_info, "name", HDFS_File_Info_name, 0);
   rb_define_method(c_file_info, "owner", HDFS_File_Info_owner, 0);
