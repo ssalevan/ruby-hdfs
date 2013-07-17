@@ -524,7 +524,7 @@ VALUE HDFS_File_System_rename(VALUE self, VALUE from_path, VALUE to_path) {
 
 /**
  * call-seq:
- *    hdfs.set_replication(path, replication=3) -> success
+ *    hdfs.set_replication!(path, replication=3) -> success
  *
  * Sets the replication of the following path to the supplied number of nodes
  * it will be replicated against.  Returns True if successful; raises a
