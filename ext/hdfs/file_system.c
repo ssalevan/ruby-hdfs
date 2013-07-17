@@ -367,7 +367,8 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
   }
  
   if (data->fs == NULL) {
-    raise_HDFS_Connect_Error("Failed to connect to HDFS");
+    rb_raise(e_connect_error, "Failed to connect to HDFS: %s",
+        get_error(errno));
     return Qnil;
   } 
 
@@ -429,7 +430,7 @@ VALUE HDFS_File_System_move(int argc, VALUE* argv, VALUE self) {
   }
   if (hdfsMove(data->fs, get_string(from_path), destFS,
           get_string(to_path)) == -1) {
-    raise_HDFS_DFS_Exception("Error while moving path %s to path %s: %s",
+    rb_raise(e_dfs_exception, "Error while moving path %s to path %s: %s",
         get_string(from_path), get_string(to_path), get_error(errno));
     return Qnil;
   }
@@ -603,7 +604,7 @@ VALUE HDFS_File_System_used(VALUE self) {
  *   to set as the time of last file modification.
  */
 VALUE HDFS_File_System_utime(int argc, VALUE* argv, VALUE self) {
-  VALUE path, modified_time, access_time;
+  VALUE path, options;
   rb_scan_args(argc, argv, "11", &path, &options);
   // Sets default values for keyword args, type-checks supplied value.
   options = NIL_P(options) ? rb_hash_new() : options;
@@ -615,10 +616,10 @@ VALUE HDFS_File_System_utime(int argc, VALUE* argv, VALUE self) {
   VALUE r_mtime = rb_hash_aref(options, rb_eval_string(":mtime"));
   // Converts any Time objects to seconds since the Unix epoch.
   if (TYPE(r_atime) == T_TIME) {
-    r_atime = rb_funcall(r_atime, "to_i", 0);
+    r_atime = rb_funcall(r_atime, rb_intern("to_i"), 0);
   }
   if (TYPE(r_mtime) == T_TIME) {
-    r_mtime = rb_funcall(r_mtime, "to_i", 0);
+    r_mtime = rb_funcall(r_mtime, rb_intern("to_i"), 0);
   }
   // Sets default values for last modified and/or last access time.
   tTime hdfsAccessTime = NIL_P(r_atime) ? -1 : NUM2LONG(r_atime);
