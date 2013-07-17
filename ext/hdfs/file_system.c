@@ -15,6 +15,10 @@ typedef struct FSData {
 
 static VALUE c_file_system;
 
+static VALUE e_connect_error;
+static VALUE e_could_not_open;
+static VALUE e_dfs_exception;
+static VALUE e_does_not_exist;
 
 /*
  * HDFS::FileSystem
@@ -207,24 +211,6 @@ VALUE HDFS_File_System_copy(int argc, VALUE* argv, VALUE self) {
 
 /**
  * call-seq:
- *    hdfs.create_directory(path) -> success
- *
- * Creates a directory at the supplied path.  If successful, returns True;
- * raises a DFSException if this fails.
- */
-VALUE HDFS_File_System_create_directory(VALUE self, VALUE path) {
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
-  if (hdfsCreateDirectory(data->fs, get_string(path)) < 0) {
-    rb_raise(e_dfs_exception, "Could not create directory at path %s: %s",
-        get_string(path), get_error(errno));
-    return Qnil;
-  }
-  return Qtrue;
-}
-
-/**
- * call-seq:
  *    hdfs.cwd -> success
  *
  * Displays the current working directory; raises a DFSException if this fails.
@@ -382,7 +368,7 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
   }
  
   if (data->fs == NULL) {
-    rb_raise(e_connect_error, "Failed to connect to HDFS");
+    raise_HDFS_Connect_Error("Failed to connect to HDFS");
     return Qnil;
   } 
 
@@ -444,8 +430,26 @@ VALUE HDFS_File_System_move(int argc, VALUE* argv, VALUE self) {
   }
   if (hdfsMove(data->fs, get_string(from_path), destFS,
           get_string(to_path)) == -1) {
-    rb_raise(e_dfs_exception, "Error while moving path %s to path %s: %s",
+    raise_HDFS_DFS_Exception("Error while moving path %s to path %s: %s",
         get_string(from_path), get_string(to_path), get_error(errno));
+    return Qnil;
+  }
+  return Qtrue;
+}
+
+/**
+ * call-seq:
+ *    hdfs.mkdir(path) -> success
+ *
+ * Creates a directory at the supplied path.  If successful, returns True;
+ * raises a DFSException if this fails.
+ */
+VALUE HDFS_File_System_mkdir(VALUE self, VALUE path) {
+  FSData* data = NULL;
+  Data_Get_Struct(self, FSData, data);
+  if (hdfsCreateDirectory(data->fs, get_string(path)) < 0) {
+    rb_raise(e_dfs_exception, "Could not create directory at path %s: %s",
+        get_string(path), get_error(errno));
     return Qnil;
   }
   return Qtrue;
@@ -535,7 +539,7 @@ VALUE HDFS_File_System_set_replication(int argc, VALUE* argv, VALUE self) {
       NUM2INT(replication);
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
-  if (hdfsSetReplication(data->fs, get_string(path), hdfs_replication) < 0) {
+  if (hdfsSetReplication(data->fs, get_string(path), hdfs_replication) == -1) {
     rb_raise(e_dfs_exception, "Failed to set replication to %d at path %s: %s",
         hdfs_replication, get_string(path), get_error(errno));
     return Qnil;
@@ -586,17 +590,40 @@ VALUE HDFS_File_System_used(VALUE self) {
 
 /**
  * call-seq:
- *    hdfs.utime(path, modified_time=nil, access_time=nil) -> retval
+ *    hdfs.utime(path, options={}) -> retval
  *
  * Changes the last modified and/or last access time in seconds since the Unix
- * epoch for the supplied file.  Returns true if successful; false if not.
+ * epoch for the supplied file.  Returns true if successful; raises a
+ * DFSException if this fails.
+ *
+ * options can have the following keys:
+ *
+ * * *atime*: Time object or Integer representing seconds since the Unix epoch
+ *   to set as the time of last file access.
+ * * *mtime*: Time object or Integer representing seconds since the Unix epoch
+ *   to set as the time of last file modification.
  */
 VALUE HDFS_File_System_utime(int argc, VALUE* argv, VALUE self) {
   VALUE path, modified_time, access_time;
-  rb_scan_args(argc, argv, "12", &path, &modified_time, &access_time);
+  rb_scan_args(argc, argv, "11", &path, &options);
+  // Sets default values for keyword args, type-checks supplied value.
+  options = NIL_P(options) ? rb_hash_new() : options;
+  if (TYPE(options) != T_HASH) {
+    rb_raise(rb_eArgError, "options must be of type Hash");
+    return Qnil;
+  }
+  VALUE r_atime = rb_hash_aref(options, rb_eval_string(":atime"));
+  VALUE r_mtime = rb_hash_aref(options, rb_eval_string(":mtime"));
+  // Converts any Time objects to seconds since the Unix epoch.
+  if (TYPE(r_atime) == T_TIME) {
+    r_atime = rb_funcall(r_atime, "to_i", 0);
+  }
+  if (TYPE(r_mtime) == T_TIME) {
+    r_mtime = rb_funcall(r_mtime, "to_i", 0);
+  }
   // Sets default values for last modified and/or last access time.
-  tTime hdfsModifiedTime = NIL_P(modified_time) ? -1 : NUM2LONG(modified_time);
-  tTime hdfsAccessTime = NIL_P(access_time) ? -1 : NUM2LONG(access_time);
+  tTime hdfsAccessTime = NIL_P(r_atime) ? -1 : NUM2LONG(r_atime);
+  tTime hdfsModifiedTime = NIL_P(r_mtime) ? -1 : NUM2LONG(r_mtime);
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
   if (hdfsUtime(data->fs, get_string(path), hdfsModifiedTime,
@@ -620,8 +647,6 @@ void init_file_system(VALUE parent) {
   rb_define_method(c_file_system, "chmod", HDFS_File_System_chmod, -1);
   rb_define_method(c_file_system, "chown", HDFS_File_System_chown, 2);
   rb_define_method(c_file_system, "copy", HDFS_File_System_copy, -1);
-  rb_define_method(c_file_system, "create_directory",
-      HDFS_File_System_create_directory, 1);
   rb_define_method(c_file_system, "cwd", HDFS_File_System_cwd, 0);
   rb_define_method(c_file_system, "delete", HDFS_File_System_delete, -1);
   rb_define_method(c_file_system, "disconnect", HDFS_File_System_disconnect,
@@ -636,6 +661,7 @@ void init_file_system(VALUE parent) {
       -1);
   rb_define_method(c_file_system, "list_directory",
       HDFS_File_System_list_directory, 1);
+  rb_define_method(c_file_system, "mkdir", HDFS_File_System_mkdir, 1);
   rb_define_method(c_file_system, "move", HDFS_File_System_move, -1);
   rb_define_method(c_file_system, "open", HDFS_File_System_open, -1);
   rb_define_method(c_file_system, "rename", HDFS_File_System_rename, 2);
@@ -644,4 +670,13 @@ void init_file_system(VALUE parent) {
       HDFS_File_System_set_replication, -1);
   rb_define_method(c_file_system, "used", HDFS_File_System_used, 0);
   rb_define_method(c_file_system, "utime", HDFS_File_System_utime, -1);
+
+  e_dfs_exception = rb_define_class_under(parent, "DFSException",
+      rb_eStandardError);
+  e_connect_error = rb_define_class_under(parent, "ConnectError",
+      e_dfs_exception);  
+  e_could_not_open = rb_define_class_under(parent, "CouldNotOpenFileError",
+      e_file_error);
+  e_does_not_exist = rb_define_class_under(parent, "DoesNotExistError",
+      e_file_error);
 }

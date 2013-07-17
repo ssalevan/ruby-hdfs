@@ -13,8 +13,6 @@ Gem::Specification.new do |gem|
   gem.files = [
     'LICENSE',
     'ext/hdfs/constants.h',
-    'ext/hdfs/exceptions.c',
-    'ext/hdfs/exceptions.h',
     'ext/hdfs/extconf.rb',
     'ext/hdfs/file.c',
     'ext/hdfs/file.h',

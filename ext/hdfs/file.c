@@ -11,6 +11,8 @@ typedef struct FileData {
 } FileData;
 
 static VALUE c_file;
+static VALUE e_file_closed_error;
+static VALUE e_file_error;
 
 
 /*
@@ -27,7 +29,7 @@ void free_file_data(FileData* data) {
 /* Ensures that a file is open; otherwise throws a FileError. */
 void ensure_file_open(FileData* data) {
   if (data->file == NULL) {
-    rb_raise(e_file_error, "File is closed");
+    rb_raise(e_file_closed_error, "File is closed");
   }
 }
 
@@ -279,4 +281,8 @@ void init_file(VALUE parent) {
   rb_define_method(c_file, "close", HDFS_File_close, 0);
   rb_define_method(c_file, "read_open?", HDFS_File_read_open, 0);
   rb_define_method(c_file, "write_open?", HDFS_File_write_open, 0);
+
+  e_file_error = rb_define_class_under(parent, "FileError", rb_eException);
+  e_file_closed_error = rb_define_class_under(parent, "FileClosedError",
+      e_file_error);
 }

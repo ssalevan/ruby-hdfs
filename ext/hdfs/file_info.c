@@ -65,7 +65,7 @@ VALUE new_HDFS_File_Info(hdfsFileInfo* info) {
       return Data_Wrap_Struct(c_file_info_file, NULL, free_file_info,
           file_info);
     default:
-      rb_raise(e_dfs_exception, "File was not a file or directory: %s",
+      rb_raise(rb_eTypeError, "FileInfo was not a file or directory: %s",
           info->mName);
   }
   return Qnil;
@@ -145,34 +145,31 @@ VALUE HDFS_File_Info_File_is_file(VALUE self) {
  * call-seq:
  *    file_info.last_access -> retval
  *
- * Returns the time of last access as an Integer representing seconds since the
- * UNIX epoch.
+ * Returns the time of last file access as a Time object.
  */
 VALUE HDFS_File_Info_last_access(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return LONG2NUM(file_info->mLastAccess);
+  return rb_time_new(file_info->mLastAccess, 0);
 }
 
 /**
  * call-seq:
  *    file_info.last_modified -> retval
  *
- * Returns the time of last modification as an Integer representing seconds
- * since the UNIX epoch for the file
+ * Returns the time of last file modification as a Time object.
  */
 VALUE HDFS_File_Info_last_modified(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return LONG2NUM(file_info->mLastMod);
+  return rb_time_new(file_info->mLastMod, 0);
 }
 
 /**
  * call-seq:
- *    file_info.last_modified -> retval
+ *    file_info.mode -> retval
  *
- * Returns the time of last modification as an Integer representing seconds
- * since the UNIX epoch.
+ * Returns the mode of the file as an Integer.
  */
 VALUE HDFS_File_Info_mode(VALUE self) {
   FileInfo* file_info = NULL;
@@ -189,7 +186,7 @@ VALUE HDFS_File_Info_mode(VALUE self) {
 VALUE HDFS_File_Info_name(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return rb_str_new(file_info->mName, strlen(file_info->mName));
+  return rb_str_new2(file_info->mName);
 }
 
 /**
@@ -201,7 +198,7 @@ VALUE HDFS_File_Info_name(VALUE self) {
 VALUE HDFS_File_Info_owner(VALUE self) {
   FileInfo* file_info = NULL;
   Data_Get_Struct(self, FileInfo, file_info);
-  return rb_str_new(file_info->mOwner, strlen(file_info->mOwner));
+  return rb_str_new2(file_info->mOwner);
 }
 
 /**
@@ -242,13 +239,13 @@ VALUE HDFS_File_Info_to_s(VALUE self) {
   VALUE class_string = rb_funcall(rb_funcall(self, rb_intern("class"), 0),
       rb_intern("to_s"), 0);
   char* output;
-  VALUE string_value = rb_str_new2("");
+  VALUE string_value = Qnil;
   // If asprintf was successful, creates a Ruby String.
   if (asprintf(&output, "#<%s: %s, mode=%d, owner=%s, group=%s>",
           RSTRING_PTR(class_string), file_info->mName,
           decimal_octal(file_info->mPermissions), file_info->mOwner,
           file_info->mGroup) >= 0) {
-    string_value = rb_str_new(output, strlen(output));
+    string_value = rb_str_new2(output);
   }
   free(output);
   return string_value;
