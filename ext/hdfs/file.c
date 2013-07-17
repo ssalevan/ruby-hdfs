@@ -10,6 +10,7 @@ typedef struct FileData {
 } FileData;
 
 static VALUE c_file;
+
 static VALUE e_file_closed_error;
 static VALUE e_file_error;
 

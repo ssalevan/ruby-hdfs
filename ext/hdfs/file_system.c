@@ -17,6 +17,8 @@ static VALUE c_file_system;
 static VALUE e_connect_error;
 static VALUE e_could_not_open;
 static VALUE e_dfs_exception;
+static VALUE e_not_connected;
+
 
 /*
  * HDFS::FileSystem
@@ -27,6 +29,16 @@ void free_fs_data(FSData* data) {
     hdfsDisconnect(data->fs);
     data->fs = NULL;
   }
+}
+
+/* Ensures that the DFS is connected; otherwise throws a NotConnectedError. */
+FSData* get_FSData(VALUE rb_object) {
+  FSData* data = NULL;
+  Data_Get_Struct(rb_object, FSData, data);
+  if (data->fs == NULL) {
+    rb_raise(e_not_connected, "DFS is not connected");
+  }
+  return data;
 }
 
 VALUE HDFS_File_System_alloc(VALUE klass) {
@@ -44,14 +56,13 @@ VALUE HDFS_File_System_alloc(VALUE klass) {
  * True if successful, raises a DFSException if this fails.
  */
 VALUE HDFS_File_System_rm(int argc, VALUE* argv, VALUE self) {
+  FSData* data = get_FSData(self);
   VALUE path, recursive;
   rb_scan_args(argc, argv, "11", &path, &recursive);
   int hdfs_recursive = HDFS_DEFAULT_RECURSIVE_DELETE;
   if (!NIL_P(recursive)) {
     hdfs_recursive = (recursive == Qtrue) ? 1 : 0;
   }
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
   if (hdfsDelete(data->fs, get_string(path), hdfs_recursive) == -1) {
     rb_raise(e_dfs_exception, "Could not delete file at path %s: %s",
         get_string(path), get_error(errno));
@@ -84,8 +95,7 @@ VALUE HDFS_File_System_disconnect(VALUE self) {
  * DFSException if this was unsuccessful.
  */
 VALUE HDFS_File_System_capacity(VALUE self) {
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
+  FSData* data = get_FSData(self);
   long capacity = hdfsGetCapacity(data->fs);
   if (capacity < 0) {
     rb_raise(e_dfs_exception, "Error while retrieving capacity: %s",
@@ -103,8 +113,7 @@ VALUE HDFS_File_System_capacity(VALUE self) {
  * successful; raises a DFSException if this fails.
  */
 VALUE HDFS_File_System_cd(VALUE self, VALUE path) {
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
+  FSData* data = get_FSData(self);
   if (hdfsSetWorkingDirectory(data->fs, get_string(path)) < 0) {
     rb_raise(e_dfs_exception,
         "Failed to change current working directory to path %s: %s",
@@ -122,8 +131,7 @@ VALUE HDFS_File_System_cd(VALUE self, VALUE path) {
  * a DFSException if this fails.
  */
 VALUE HDFS_File_System_chgrp(VALUE self, VALUE path, VALUE group) {
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
+  FSData* data = get_FSData(self);
   if (hdfsChown(data->fs, get_string(path), NULL, get_string(group)) == -1) {
     rb_raise(e_dfs_exception, "Failed to chgrp path %s to group %s: %s",
         get_string(path), get_string(group), get_error(errno));
@@ -140,10 +148,9 @@ VALUE HDFS_File_System_chgrp(VALUE self, VALUE path, VALUE group) {
  * a DFSException if this fails.
  */
 VALUE HDFS_File_System_chmod(int argc, VALUE* argv, VALUE self) {
+  FSData* data = get_FSData(self);
   VALUE path, mode;
   rb_scan_args(argc, argv, "11", &path, &mode);
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
   // Sets default mode if none is supplied.
   short hdfs_mode = NIL_P(mode) ? HDFS_DEFAULT_MODE : 
       octal_decimal(NUM2INT(mode));
@@ -163,8 +170,7 @@ VALUE HDFS_File_System_chmod(int argc, VALUE* argv, VALUE self) {
  * a DFSException if this fails.
  */
 VALUE HDFS_File_System_chown(VALUE self, VALUE path, VALUE owner) {
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
+  FSData* data = get_FSData(self);
   if (hdfsChown(data->fs, get_string(path), get_string(owner), NULL) == -1) {
     rb_raise(e_dfs_exception, "Failed to chown user path %s to user %s: %s",
         get_string(path), get_string(owner), get_error(errno));
@@ -182,10 +188,9 @@ VALUE HDFS_File_System_chown(VALUE self, VALUE path, VALUE owner) {
  * successful, returns True; otherwise, raises a DFSException.
  */
 VALUE HDFS_File_System_cp(int argc, VALUE* argv, VALUE self) {
+  FSData* data = get_FSData(self);
   VALUE from_path, to_path, to_fs;
   rb_scan_args(argc, argv, "21", &from_path, &to_path, &to_fs);
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
   hdfsFS destFS = data->fs;
   // If no to_fs is supplied, copies to the current file system.
   if (!NIL_P(to_fs)) {
@@ -214,8 +219,7 @@ VALUE HDFS_File_System_cp(int argc, VALUE* argv, VALUE self) {
  * Displays the current working directory; raises a DFSException if this fails.
  */
 VALUE HDFS_File_System_cwd(VALUE self) {
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
+  FSData* data = get_FSData(self);
   char* hdfsCurDir = ALLOC_N(char, HDFS_DEFAULT_STRING_LENGTH);
   if (hdfsGetWorkingDirectory(data->fs, hdfsCurDir,
           HDFS_DEFAULT_STRING_LENGTH) == NULL) {
@@ -237,8 +241,7 @@ VALUE HDFS_File_System_cwd(VALUE self) {
  * DFSException if this was unsuccessful.
  */
 VALUE HDFS_File_System_default_block_size(VALUE self) {
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
+  FSData* data = get_FSData(self);
   long block_size = hdfsGetDefaultBlockSize(data->fs);
   if (block_size == -1) {
     rb_raise(e_dfs_exception, "Error while retrieving default block size: %s",
@@ -256,8 +259,7 @@ VALUE HDFS_File_System_default_block_size(VALUE self) {
  * DFSException if this was unsuccessful.
  */
 VALUE HDFS_File_System_default_block_size_at_path(VALUE self, VALUE path) {
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
+  FSData* data = get_FSData(self);
   long block_size = hdfsGetDefaultBlockSizeAtPath(data->fs,
       get_string(path));
   if (block_size == -1) {
@@ -277,8 +279,7 @@ VALUE HDFS_File_System_default_block_size_at_path(VALUE self, VALUE path) {
  * if not, returns False.
  */
 VALUE HDFS_File_System_exist(VALUE self, VALUE path) {
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
+  FSData* data = get_FSData(self);
   int success = hdfsExists(data->fs, get_string(path));
   return success == 0 ? Qtrue : Qfalse;
 }
@@ -293,8 +294,7 @@ VALUE HDFS_File_System_exist(VALUE self, VALUE path) {
  */
 VALUE HDFS_File_System_get_hosts(VALUE self, VALUE path, VALUE start,
     VALUE length) {
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
+  FSData* data = get_FSData(self);
   char*** hosts = hdfsGetHosts(data->fs, get_string(path), NUM2LONG(start),
       NUM2LONG(length));
   if (hosts == NULL) {
@@ -382,8 +382,7 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
  * HDFS::FileInfo objects.  If this fails, raises a DFSException.
  */
 VALUE HDFS_File_System_ls(VALUE self, VALUE path) {
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
+  FSData* data = get_FSData(self);
   VALUE file_infos = rb_ary_new();
   int num_files = -1;
   hdfsFileInfo* infos = hdfsListDirectory(data->fs, get_string(path),
@@ -411,10 +410,9 @@ VALUE HDFS_File_System_ls(VALUE self, VALUE path) {
  * successful, returns true; otherwise, returns false.
  */
 VALUE HDFS_File_System_mv(int argc, VALUE* argv, VALUE self) {
+  FSData* data = get_FSData(self);
   VALUE from_path, to_path, to_fs;
   rb_scan_args(argc, argv, "21", &from_path, &to_path, &to_fs);
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
   hdfsFS destFS = data->fs;
   // If no to_fs is supplied, moves to the current file system.
   if (!NIL_P(to_fs)) {
@@ -444,8 +442,7 @@ VALUE HDFS_File_System_mv(int argc, VALUE* argv, VALUE self) {
  * raises a DFSException if this fails.
  */
 VALUE HDFS_File_System_mkdir(VALUE self, VALUE path) {
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
+  FSData* data = get_FSData(self);
   if (hdfsCreateDirectory(data->fs, get_string(path)) < 0) {
     rb_raise(e_dfs_exception, "Could not create directory at path %s: %s",
         get_string(path), get_error(errno));
@@ -472,6 +469,7 @@ VALUE HDFS_File_System_mkdir(VALUE self, VALUE path) {
  *   (default: default block size as configured by HDFS)
  */
 VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
+  FSData* data = get_FSData(self);
   VALUE path, mode, options;
   int flags = O_RDONLY;
   rb_scan_args(argc, argv, "12", &path, &mode, &options);
@@ -490,8 +488,6 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
   VALUE r_buffer_size = rb_hash_aref(options, rb_eval_string(":buffer_size"));
   VALUE r_replication = rb_hash_aref(options, rb_eval_string(":replication"));
   VALUE r_block_size = rb_hash_aref(options, rb_eval_string(":block_size"));
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
   hdfsFile file = hdfsOpenFile(data->fs, get_string(path), flags,
       RTEST(r_buffer_size) ? NUM2INT(r_buffer_size) : 0,
       RTEST(r_replication) ? NUM2INT(r_replication) : 0,
@@ -512,8 +508,7 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
  * Returns True if successful, raises a DFSException if this fails.
  */
 VALUE HDFS_File_System_rename(VALUE self, VALUE from_path, VALUE to_path) {
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
+  FSData* data = get_FSData(self);
   if (hdfsRename(data->fs, get_string(from_path), get_string(to_path)) == -1) {
     rb_raise(e_dfs_exception, "Could not rename path %s to path %s: %s",
         get_string(from_path), get_string(to_path), get_error(errno));
@@ -531,13 +526,12 @@ VALUE HDFS_File_System_rename(VALUE self, VALUE from_path, VALUE to_path) {
  * DFSException if this fails.
  */
 VALUE HDFS_File_System_set_replication(int argc, VALUE* argv, VALUE self) {
+  FSData* data = get_FSData(self);
   VALUE path, replication;
   rb_scan_args(argc, argv, "11", &path, &replication);
   // If no replication value is supplied, uses default replication value.
   int hdfs_replication = NIL_P(replication) ? HDFS_DEFAULT_REPLICATION :
       NUM2INT(replication);
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
   if (hdfsSetReplication(data->fs, get_string(path), hdfs_replication) == -1) {
     rb_raise(e_dfs_exception, "Failed to set replication to %d at path %s: %s",
         hdfs_replication, get_string(path), get_error(errno));
@@ -555,8 +549,7 @@ VALUE HDFS_File_System_set_replication(int argc, VALUE* argv, VALUE self) {
  * DFSException.
  */
 VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
+  FSData* data = get_FSData(self);
   hdfsFileInfo* info = hdfsGetPathInfo(data->fs, get_string(path));
   if (info == NULL) {
     rb_raise(e_dfs_exception, "Failed to stat file %s: %s",
@@ -576,8 +569,7 @@ VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
  * DFSException if unsuccessful.
  */
 VALUE HDFS_File_System_used(VALUE self) {
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
+  FSData* data = get_FSData(self);
   tOffset used = hdfsGetUsed(data->fs);
   if (used == -1) {
     rb_raise(e_dfs_exception, "Error while retrieving used capacity: %s",
@@ -603,6 +595,7 @@ VALUE HDFS_File_System_used(VALUE self) {
  *   to set as the time of last file modification.
  */
 VALUE HDFS_File_System_utime(int argc, VALUE* argv, VALUE self) {
+  FSData* data = get_FSData(self);
   VALUE path, options;
   rb_scan_args(argc, argv, "11", &path, &options);
   // Sets default values for keyword args, type-checks supplied value.
@@ -623,8 +616,6 @@ VALUE HDFS_File_System_utime(int argc, VALUE* argv, VALUE self) {
   // Sets default values for last modified and/or last access time.
   tTime hdfsAccessTime = NIL_P(r_atime) ? -1 : NUM2LONG(r_atime);
   tTime hdfsModifiedTime = NIL_P(r_mtime) ? -1 : NUM2LONG(r_mtime);
-  FSData* data = NULL;
-  Data_Get_Struct(self, FSData, data);
   if (hdfsUtime(data->fs, get_string(path), hdfsModifiedTime,
           hdfsAccessTime) == -1) {
     rb_raise(e_dfs_exception,
@@ -674,5 +665,7 @@ void init_file_system(VALUE parent) {
   e_connect_error = rb_define_class_under(parent, "ConnectError",
       e_dfs_exception);  
   e_could_not_open = rb_define_class_under(parent, "CouldNotOpenFileError",
+      e_dfs_exception);
+  e_not_connected = rb_define_class_under(parent, "NotConnectedError",
       e_dfs_exception);
 }
