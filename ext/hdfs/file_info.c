@@ -237,17 +237,10 @@ VALUE HDFS_File_Info_to_s(VALUE self) {
   // Introspects current class, returns it as a String.
   VALUE class_string = rb_funcall(rb_funcall(self, rb_intern("class"), 0),
       rb_intern("to_s"), 0);
-  char* output;
-  VALUE string_value = Qnil;
-  // If asprintf was successful, creates a Ruby String.
-  if (asprintf(&output, "#<%s: %s, mode=%d, owner=%s, group=%s>",
-          RSTRING_PTR(class_string), file_info->mName,
-          decimal_octal(file_info->mPermissions), file_info->mOwner,
-          file_info->mGroup) >= 0) {
-    string_value = rb_str_new2(output);
-  }
-  free(output);
-  return string_value;
+  return rb_sprintf("#<%s: %s, mode=%d, owner=%s, group=%s>",
+      RSTRING_PTR(class_string), file_info->mName,
+      decimal_octal(file_info->mPermissions), file_info->mOwner,
+      file_info->mGroup);
 }
 
 void init_file_info(VALUE parent) {

@@ -235,8 +235,9 @@ VALUE HDFS_File_tell(VALUE self) {
  */
 VALUE HDFS_File_write(VALUE self, VALUE bytes) {
   FileData* data = get_FileData(self);
-  tSize bytes_written = hdfsWrite(data->fs, data->file, RSTRING_PTR(bytes),
-      RSTRING_LEN(bytes));
+  tSize num_bytes = NUM2UINT(rb_funcall(bytes, rb_intern("bytesize"), 0));
+  tSize bytes_written = hdfsWrite(data->fs, data->file, StringValuePtr(bytes),
+      num_bytes);
   if (bytes_written == -1) {
     rb_raise(e_file_error, "Failed to write data: %s", get_error(errno));
   }
