@@ -19,6 +19,10 @@ typedef struct FileInfo {
   tTime mLastAccess;   /* the last access time for the file in seconds */
 } FileInfo;
 
+static VALUE c_file_info;
+static VALUE c_file_info_file;
+static VALUE c_file_info_directory;
+
 
 /*
  * HDFS::FileInfo

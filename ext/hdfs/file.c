@@ -9,6 +9,11 @@ typedef struct FileData {
   hdfsFile file;
 } FileData;
 
+static VALUE c_file;
+
+static VALUE e_file_closed_error;
+static VALUE e_file_error;
+
 
 void free_file_data(FileData* data) {
   if (data && data->file != NULL) {
