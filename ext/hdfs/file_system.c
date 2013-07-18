@@ -20,10 +20,6 @@ static VALUE e_dfs_exception;
 static VALUE e_not_connected;
 
 
-/*
- * HDFS::FileSystem
- */
-
 void free_fs_data(FSData* data) {
   if (data && data->fs != NULL) {
     hdfsDisconnect(data->fs);
@@ -40,6 +36,10 @@ FSData* get_FSData(VALUE rb_object) {
   }
   return data;
 }
+
+/*
+ * HDFS::FileSystem
+ */
 
 VALUE HDFS_File_System_alloc(VALUE klass) {
   FSData* data = ALLOC_N(FSData, 1);
