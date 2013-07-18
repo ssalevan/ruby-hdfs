@@ -31,7 +31,7 @@ void ensure_file_open(FileData* data) {
 
 FileData* get_FileData(VALUE rb_object) {
   FileData* data = NULL;
-  Data_Get_Struct(self, FileData, data);
+  Data_Get_Struct(rb_object, FileData, data);
   if (data->file == NULL) {
     rb_raise(e_file_closed_error, "File is closed");
   }
