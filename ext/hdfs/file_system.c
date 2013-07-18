@@ -12,13 +12,6 @@ typedef struct FSData {
   hdfsFS fs;
 } FSData;
 
-static VALUE c_file_system;
-
-static VALUE e_connect_error;
-static VALUE e_could_not_open;
-static VALUE e_dfs_exception;
-static VALUE e_not_connected;
-
 
 void free_fs_data(FSData* data) {
   if (data && data->fs != NULL) {
