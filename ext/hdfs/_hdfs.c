@@ -9,7 +9,7 @@
 static VALUE m_hdfs;
 
 
-void Init_hdfs() {
+void Init__hdfs() {
   m_hdfs = rb_define_module("HDFS");
 
   init_file(m_hdfs);

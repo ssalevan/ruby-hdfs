@@ -13,7 +13,4 @@ int octal_decimal(int n);
 /* Returns a string representation of errno in a thread-safe manner. */
 char* get_error(int errnum);
 
-/* Calls <obj>.to_s and returns a pointer to its underlying char array. */
-char* get_string(VALUE string);
-
 #endif /* HDFS_UTILS_H */

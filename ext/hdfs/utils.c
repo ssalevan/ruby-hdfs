@@ -46,8 +46,3 @@ char* get_error(int errnum) {
   xfree(buffer);
   return RSTRING_PTR(error_msg);
 }
-
-char* get_string(VALUE string) {
-  VALUE string_val = rb_funcall(string, rb_intern("to_s"), 0);
-  return RSTRING_PTR(string_val);
-}

@@ -63,9 +63,9 @@ VALUE HDFS_File_System_rm(int argc, VALUE* argv, VALUE self) {
   if (!NIL_P(recursive)) {
     hdfs_recursive = (recursive == Qtrue) ? 1 : 0;
   }
-  if (hdfsDelete(data->fs, get_string(path), hdfs_recursive) == -1) {
+  if (hdfsDelete(data->fs, StringValuePtr(path), hdfs_recursive) == -1) {
     rb_raise(e_dfs_exception, "Could not delete file at path %s: %s",
-        get_string(path), get_error(errno));
+        StringValuePtr(path), get_error(errno));
     return Qnil;
   }
   return Qtrue;
@@ -114,10 +114,10 @@ VALUE HDFS_File_System_capacity(VALUE self) {
  */
 VALUE HDFS_File_System_cd(VALUE self, VALUE path) {
   FSData* data = get_FSData(self);
-  if (hdfsSetWorkingDirectory(data->fs, get_string(path)) < 0) {
+  if (hdfsSetWorkingDirectory(data->fs, StringValuePtr(path)) < 0) {
     rb_raise(e_dfs_exception,
         "Failed to change current working directory to path %s: %s",
-        get_string(path), get_error(errno));
+        StringValuePtr(path), get_error(errno));
     return Qnil;
   }
   return Qtrue;
@@ -132,9 +132,10 @@ VALUE HDFS_File_System_cd(VALUE self, VALUE path) {
  */
 VALUE HDFS_File_System_chgrp(VALUE self, VALUE path, VALUE group) {
   FSData* data = get_FSData(self);
-  if (hdfsChown(data->fs, get_string(path), NULL, get_string(group)) == -1) {
+  if (hdfsChown(data->fs, StringValuePtr(path), NULL,
+          StringValuePtr(group)) == -1) {
     rb_raise(e_dfs_exception, "Failed to chgrp path %s to group %s: %s",
-        get_string(path), get_string(group), get_error(errno));
+        StringValuePtr(path), StringValuePtr(group), get_error(errno));
     return Qnil;
   }
   return Qtrue;
@@ -154,9 +155,9 @@ VALUE HDFS_File_System_chmod(int argc, VALUE* argv, VALUE self) {
   // Sets default mode if none is supplied.
   short hdfs_mode = NIL_P(mode) ? HDFS_DEFAULT_MODE : 
       octal_decimal(NUM2INT(mode));
-  if (hdfsChmod(data->fs, get_string(path), hdfs_mode) == -1) {
+  if (hdfsChmod(data->fs, StringValuePtr(path), hdfs_mode) == -1) {
     rb_raise(e_dfs_exception, "Failed to chmod path %s to mode %d: %s",
-        get_string(path), decimal_octal(hdfs_mode), get_error(errno));
+        StringValuePtr(path), decimal_octal(hdfs_mode), get_error(errno));
     return Qnil;
   }
   return Qtrue;
@@ -171,9 +172,9 @@ VALUE HDFS_File_System_chmod(int argc, VALUE* argv, VALUE self) {
  */
 VALUE HDFS_File_System_chown(VALUE self, VALUE path, VALUE owner) {
   FSData* data = get_FSData(self);
-  if (hdfsChown(data->fs, get_string(path), get_string(owner), NULL) == -1) {
+  if (hdfsChown(data->fs, StringValuePtr(path), StringValuePtr(owner), NULL) == -1) {
     rb_raise(e_dfs_exception, "Failed to chown user path %s to user %s: %s",
-        get_string(path), get_string(owner), get_error(errno));
+        StringValuePtr(path), StringValuePtr(owner), get_error(errno));
     return Qnil;
   }
   return Qtrue;
@@ -203,10 +204,10 @@ VALUE HDFS_File_System_cp(int argc, VALUE* argv, VALUE self) {
       return Qnil;
     }
   }
-  if (hdfsCopy(data->fs, get_string(from_path), destFS,
-          get_string(to_path)) == -1) {
+  if (hdfsCopy(data->fs, StringValuePtr(from_path), destFS,
+          StringValuePtr(to_path)) == -1) {
     rb_raise(e_dfs_exception, "Failed to copy path: %s to path: %s: %s",
-        get_string(from_path), get_string(to_path), get_error(errno));
+        StringValuePtr(from_path), StringValuePtr(to_path), get_error(errno));
     return Qnil;
   }
   return Qtrue;
@@ -261,11 +262,11 @@ VALUE HDFS_File_System_default_block_size(VALUE self) {
 VALUE HDFS_File_System_default_block_size_at_path(VALUE self, VALUE path) {
   FSData* data = get_FSData(self);
   long block_size = hdfsGetDefaultBlockSizeAtPath(data->fs,
-      get_string(path));
+      StringValuePtr(path));
   if (block_size == -1) {
     rb_raise(e_dfs_exception,
         "Error while retrieving default block size at path %s: %s",
-        get_string(path), get_error(errno));
+        StringValuePtr(path), get_error(errno));
     return Qnil;
   }
   return LONG2NUM(block_size);
@@ -280,7 +281,7 @@ VALUE HDFS_File_System_default_block_size_at_path(VALUE self, VALUE path) {
  */
 VALUE HDFS_File_System_exist(VALUE self, VALUE path) {
   FSData* data = get_FSData(self);
-  int success = hdfsExists(data->fs, get_string(path));
+  int success = hdfsExists(data->fs, StringValuePtr(path));
   return success == 0 ? Qtrue : Qfalse;
 }
 
@@ -295,12 +296,12 @@ VALUE HDFS_File_System_exist(VALUE self, VALUE path) {
 VALUE HDFS_File_System_get_hosts(VALUE self, VALUE path, VALUE start,
     VALUE length) {
   FSData* data = get_FSData(self);
-  char*** hosts = hdfsGetHosts(data->fs, get_string(path), NUM2LONG(start),
+  char*** hosts = hdfsGetHosts(data->fs, StringValuePtr(path), NUM2LONG(start),
       NUM2LONG(length));
   if (hosts == NULL) {
     rb_raise(e_dfs_exception,
         "Error while retrieving hosts at path: %s, start: %s, length: %lu: %s",
-        get_string(path), get_string(start), NUM2LONG(length),
+        StringValuePtr(path), StringValuePtr(start), NUM2LONG(length),
         get_error(errno));
     return Qnil;
   }
@@ -347,7 +348,7 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
   Data_Get_Struct(self, FSData, data);
 
   VALUE r_user = rb_hash_aref(options, rb_eval_string(":user"));
-  char* hdfs_user = RTEST(r_user) ? get_string(r_user) : 
+  char* hdfs_user = RTEST(r_user) ? StringValuePtr(r_user) : 
       (char*) HDFS_DEFAULT_USER;
 
   VALUE r_local = rb_hash_aref(options, rb_eval_string(":local"));
@@ -358,7 +359,7 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
     VALUE r_port = rb_hash_aref(options, rb_eval_string(":port"));
 
     // Sets default values for host and port if not supplied by user.
-    char* hdfs_host = RTEST(r_host) ? get_string(r_host) : 
+    char* hdfs_host = RTEST(r_host) ? StringValuePtr(r_host) : 
         (char*) HDFS_DEFAULT_HOST;
     int hdfs_port   = RTEST(r_port) ? NUM2INT(r_port) :
         HDFS_DEFAULT_PORT;
@@ -385,11 +386,11 @@ VALUE HDFS_File_System_ls(VALUE self, VALUE path) {
   FSData* data = get_FSData(self);
   VALUE file_infos = rb_ary_new();
   int num_files = -1;
-  hdfsFileInfo* infos = hdfsListDirectory(data->fs, get_string(path),
+  hdfsFileInfo* infos = hdfsListDirectory(data->fs, StringValuePtr(path),
       &num_files);
   if (infos == NULL && num_files == -1) {
     rb_raise(e_dfs_exception, "Failed to list directory %s: %s",
-        get_string(path), get_error(errno));
+        StringValuePtr(path), get_error(errno));
     return Qnil;
   }
   int i;
@@ -425,10 +426,10 @@ VALUE HDFS_File_System_mv(int argc, VALUE* argv, VALUE self) {
       return Qnil;
     }
   }
-  if (hdfsMove(data->fs, get_string(from_path), destFS,
-          get_string(to_path)) == -1) {
+  if (hdfsMove(data->fs, StringValuePtr(from_path), destFS,
+          StringValuePtr(to_path)) == -1) {
     rb_raise(e_dfs_exception, "Error while moving path %s to path %s: %s",
-        get_string(from_path), get_string(to_path), get_error(errno));
+        StringValuePtr(from_path), StringValuePtr(to_path), get_error(errno));
     return Qnil;
   }
   return Qtrue;
@@ -443,9 +444,9 @@ VALUE HDFS_File_System_mv(int argc, VALUE* argv, VALUE self) {
  */
 VALUE HDFS_File_System_mkdir(VALUE self, VALUE path) {
   FSData* data = get_FSData(self);
-  if (hdfsCreateDirectory(data->fs, get_string(path)) < 0) {
+  if (hdfsCreateDirectory(data->fs, StringValuePtr(path)) < 0) {
     rb_raise(e_dfs_exception, "Could not create directory at path %s: %s",
-        get_string(path), get_error(errno));
+        StringValuePtr(path), get_error(errno));
     return Qnil;
   }
   return Qtrue;
@@ -488,12 +489,12 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
   VALUE r_buffer_size = rb_hash_aref(options, rb_eval_string(":buffer_size"));
   VALUE r_replication = rb_hash_aref(options, rb_eval_string(":replication"));
   VALUE r_block_size = rb_hash_aref(options, rb_eval_string(":block_size"));
-  hdfsFile file = hdfsOpenFile(data->fs, get_string(path), flags,
+  hdfsFile file = hdfsOpenFile(data->fs, StringValuePtr(path), flags,
       RTEST(r_buffer_size) ? NUM2INT(r_buffer_size) : 0,
       RTEST(r_replication) ? NUM2INT(r_replication) : 0,
       RTEST(r_block_size) ? NUM2INT(r_block_size) : 0);
   if (file == NULL) {
-    rb_raise(e_could_not_open, "Could not open file %s: %s", get_string(path),
+    rb_raise(e_could_not_open, "Could not open file %s: %s", StringValuePtr(path),
         get_error(errno));
     return Qnil;
   }
@@ -509,9 +510,9 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
  */
 VALUE HDFS_File_System_rename(VALUE self, VALUE from_path, VALUE to_path) {
   FSData* data = get_FSData(self);
-  if (hdfsRename(data->fs, get_string(from_path), get_string(to_path)) == -1) {
+  if (hdfsRename(data->fs, StringValuePtr(from_path), StringValuePtr(to_path)) == -1) {
     rb_raise(e_dfs_exception, "Could not rename path %s to path %s: %s",
-        get_string(from_path), get_string(to_path), get_error(errno));
+        StringValuePtr(from_path), StringValuePtr(to_path), get_error(errno));
     return Qnil;
   }
   return Qtrue;
@@ -532,9 +533,9 @@ VALUE HDFS_File_System_set_replication(int argc, VALUE* argv, VALUE self) {
   // If no replication value is supplied, uses default replication value.
   int hdfs_replication = NIL_P(replication) ? HDFS_DEFAULT_REPLICATION :
       NUM2INT(replication);
-  if (hdfsSetReplication(data->fs, get_string(path), hdfs_replication) == -1) {
+  if (hdfsSetReplication(data->fs, StringValuePtr(path), hdfs_replication) == -1) {
     rb_raise(e_dfs_exception, "Failed to set replication to %d at path %s: %s",
-        hdfs_replication, get_string(path), get_error(errno));
+        hdfs_replication, StringValuePtr(path), get_error(errno));
     return Qnil;
   }
   return Qtrue;
@@ -550,10 +551,10 @@ VALUE HDFS_File_System_set_replication(int argc, VALUE* argv, VALUE self) {
  */
 VALUE HDFS_File_System_stat(VALUE self, VALUE path) {
   FSData* data = get_FSData(self);
-  hdfsFileInfo* info = hdfsGetPathInfo(data->fs, get_string(path));
+  hdfsFileInfo* info = hdfsGetPathInfo(data->fs, StringValuePtr(path));
   if (info == NULL) {
     rb_raise(e_dfs_exception, "Failed to stat file %s: %s",
-        get_string(path), get_error(errno));
+        StringValuePtr(path), get_error(errno));
     return Qnil;
   }
   VALUE file_info = new_HDFS_File_Info(info);
@@ -616,11 +617,11 @@ VALUE HDFS_File_System_utime(int argc, VALUE* argv, VALUE self) {
   // Sets default values for last modified and/or last access time.
   tTime hdfsAccessTime = NIL_P(r_atime) ? -1 : NUM2LONG(r_atime);
   tTime hdfsModifiedTime = NIL_P(r_mtime) ? -1 : NUM2LONG(r_mtime);
-  if (hdfsUtime(data->fs, get_string(path), hdfsModifiedTime,
+  if (hdfsUtime(data->fs, StringValuePtr(path), hdfsModifiedTime,
           hdfsAccessTime) == -1) {
     rb_raise(e_dfs_exception,
         "Error while setting modified time %lu, access time %lu at path %s: %s",
-        (long) hdfsModifiedTime, (long) hdfsAccessTime, get_string(path),
+        (long) hdfsModifiedTime, (long) hdfsAccessTime, StringValuePtr(path),
         get_error(errno));
     return Qnil;
   }
