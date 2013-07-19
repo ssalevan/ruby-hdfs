@@ -45,19 +45,19 @@ module HDFS
       true
     end # def touch path
 
-    def walk path
+    def walk path, &block
       dir_listing = ls path
       components = dir_listing.reduce({:files => [],
           :directories => []}) do |memo, item|
         if item.is_directory?
           memo[:directories] << item
-          walk item.name
+          walk item.name, block
         else
           memo[:files] << item
         end
         memo
       end
-      yield path, components[:directories], components[:files]
+      block.call path, components[:directories], components[:files]
     end # def walk path
 
   end # class FileSystem
