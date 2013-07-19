@@ -511,7 +511,7 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
         get_error(errno));
     return Qnil;
   }
-  return new_HDFS_File(&file, &data->fs);
+  return new_HDFS_File(path, &file, &data->fs);
 }
 
 /**

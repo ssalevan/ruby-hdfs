@@ -38,14 +38,13 @@ FileData* get_FileData(VALUE rb_object) {
   return data;
 }
 
-VALUE new_HDFS_File(VALUE name, VALUE mode, hdfsFile* file, hdfsFS* fs) {
+VALUE new_HDFS_File(VALUE path, hdfsFile* file, hdfsFS* fs) {
   FileData* data = ALLOC_N(FileData, 1);
   data->fs = *fs;
   data->file = *file;
   VALUE file_instance = Data_Wrap_Struct(c_file, NULL, free_file_data,
       data);
-  rb_iv_set(file_instance, "@name", name);
-  rb_iv_set(file_instance, "@mode", mode);
+  rb_iv_set(file_instance, "@path", path);
   return file_instance;
 }
 
@@ -263,8 +262,8 @@ VALUE HDFS_File_write_open(VALUE self) {
 }
 
 VALUE HDFS_File_to_s(VALUE self) {
-  VALUE name = rb_iv_get("@name");
-  return rb_sprintf("#<HDFS::File: %s, mode: '%s'>", StringValuePtr(name));
+  VALUE name = rb_iv_get(self, "@name");
+  return rb_sprintf("#<HDFS::File: %s>", StringValuePtr(name));
 }
 
 void init_file(VALUE parent) {

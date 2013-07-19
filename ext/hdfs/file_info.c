@@ -228,8 +228,8 @@ VALUE HDFS_File_Info_size(VALUE self) {
  * call-seq:
  *    file_info.to_s -> retval
  *
- * Returns a human-readable representation of a Hadoop::DFS::FileSystem object
- * as a String.
+ * Returns a human-readable representation of an HDFS::FileSystem object as a
+ * String.
  */
 VALUE HDFS_File_Info_to_s(VALUE self) {
   FileInfo* file_info = NULL;
