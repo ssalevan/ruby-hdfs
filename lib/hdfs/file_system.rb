@@ -51,7 +51,7 @@ module HDFS
           :directories => []}) do |memo, item|
         if item.is_directory?
           memo[:directories] << item
-          yield walk directory.name
+          yield walk item.name
         else
           memo[:files] << item
         end
