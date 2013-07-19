@@ -10,6 +10,8 @@ Gem::Specification.new do |gem|
   gem.summary  = 'ruby hadoop libhdfs client with support for cdh4'
   gem.description = gem.summary
 
+  gem.licenses = [ "MIT" ]
+
   gem.files = [
     'LICENSE',
     'VERSION',
