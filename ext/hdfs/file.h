@@ -5,7 +5,7 @@
 #include "ruby.h"
 
 
-VALUE new_HDFS_File(hdfsFile* file, hdfsFS* fs);
+VALUE new_HDFS_File(VALUE path, hdfsFile* file, hdfsFS* fs);
 
 void init_file(VALUE parent);
 
