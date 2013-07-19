@@ -17,8 +17,24 @@ end.flatten.uniq.join(':')
 # Adds Hadoop jars to $CLASSPATH environment variable.
 ENV['CLASSPATH'] = [ENV['CLASSPATH'].to_s + ALL_JARS].join ':'
 
+$:.unshift File.join File.dirname(__FILE__)
+
 require '_hdfs'
 
+%w[file_system].each do |file|
+  require "hdfs/#{file}"
+end
+
 module HDFS
-  VERSION = '0.0.9'
+  module Version
+    def self.to_s
+      path = File.absolute_path(
+      	  File.join(File.dirname(__FILE__), '..', 'VERSION'))
+      if File.exists?(path) then
+        File.read(path)
+      else
+        "0.0-unknown"
+      end
+    end # def self.to_s
+  end # module Version
 end # module HDFS
