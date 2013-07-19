@@ -464,9 +464,9 @@ VALUE HDFS_File_System_mkdir(VALUE self, VALUE path) {
  *
  * modes can be one of the following:
  *
+ * * *'a'*: Opens file for append access
  * * *'r'*: Opens file for read access
  * * *'w'*: Opens file for write access
- * * *'a'*: Opens file for append access
  *
  * options can have the following keys:
  *
@@ -490,7 +490,7 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
     } else if (strcmp("w", StringValuePtr(mode)) == 0) {
       flags = O_WRONLY;
     } else if (strcmp("a", StringValuePtr(mode)) == 0) {
-      flags = O_APPEND;
+      flags = O_WRONLY | O_APPEND;
     } else {
       rb_raise(rb_eArgError, "Mode must be 'r', 'w', or 'a'");
       return Qnil;
