@@ -262,8 +262,8 @@ VALUE HDFS_File_write_open(VALUE self) {
 }
 
 VALUE HDFS_File_to_s(VALUE self) {
-  VALUE name = rb_iv_get(self, "@name");
-  return rb_sprintf("#<HDFS::File: %s>", StringValuePtr(name));
+  VALUE path = rb_iv_get(self, "@path");
+  return rb_sprintf("#<HDFS::File: %s>", StringValuePtr(path));
 }
 
 void init_file(VALUE parent) {
