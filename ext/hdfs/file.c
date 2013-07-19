@@ -38,12 +38,14 @@ FileData* get_FileData(VALUE rb_object) {
   return data;
 }
 
-VALUE new_HDFS_File(hdfsFile* file, hdfsFS* fs) {
+VALUE new_HDFS_File(VALUE name, VALUE mode, hdfsFile* file, hdfsFS* fs) {
   FileData* data = ALLOC_N(FileData, 1);
   data->fs = *fs;
   data->file = *file;
   VALUE file_instance = Data_Wrap_Struct(c_file, NULL, free_file_data,
       data);
+  rb_iv_set(file_instance, "@name", name);
+  rb_iv_set(file_instance, "@mode", mode);
   return file_instance;
 }
 
@@ -260,6 +262,11 @@ VALUE HDFS_File_write_open(VALUE self) {
   }
 }
 
+VALUE HDFS_File_to_s(VALUE self) {
+  VALUE name = rb_iv_get("@name");
+  return rb_sprintf("#<HDFS::File: %s, mode: '%s'>", StringValuePtr(name));
+}
+
 void init_file(VALUE parent) {
   c_file = rb_define_class_under(parent, "File", rb_cObject);
 
@@ -272,6 +279,7 @@ void init_file(VALUE parent) {
   rb_define_method(c_file, "read_pos", HDFS_File_read_pos, -1);
   rb_define_method(c_file, "seek", HDFS_File_seek, 1);
   rb_define_method(c_file, "tell", HDFS_File_tell, 0);
+  rb_define_method(c_file, "to_s", HDFS_File_to_s, 0);
   rb_define_method(c_file, "write", HDFS_File_write, 1);
   rb_define_method(c_file, "write_open?", HDFS_File_write_open, 0);
   rb_define_method(c_file, "<<", HDFS_File_write, 1);

@@ -1,5 +1,4 @@
 #include "ruby.h"
-#include "hdfs.h"
 
 #include "file.h"
 #include "file_info.h"
