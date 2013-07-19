@@ -29,10 +29,10 @@ module HDFS
   module Version
 
     def self.to_s
-      path = File.absolute_path(
-      	  File.join(File.dirname(__FILE__), '..', 'VERSION'))
-      if File.exists?(path) then
-        File.read(path)
+      path = ::File.absolute_path(
+      	  ::File.join(::File.dirname(__FILE__), '..', 'VERSION'))
+      if ::File.exists?(path) then
+        ::File.read(path)
       else
         "0.0-unknown"
       end
