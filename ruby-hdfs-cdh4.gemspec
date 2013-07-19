@@ -27,6 +27,7 @@ Gem::Specification.new do |gem|
     'ext/hdfs/hdfs.h',
     'ext/hdfs/utils.c',
     'ext/hdfs/utils.h',
+    'lib/hdfs/file.rb',
     'lib/hdfs/file_system.rb',
     'lib/hdfs.rb',
   ]
