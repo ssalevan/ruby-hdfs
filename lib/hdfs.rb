@@ -21,12 +21,13 @@ $:.unshift File.join File.dirname(__FILE__)
 
 require '_hdfs'
 
-%w[file_system].each do |file|
+%w[file file_system].each do |file|
   require "hdfs/#{file}"
 end
 
 module HDFS
   module Version
+
     def self.to_s
       path = File.absolute_path(
       	  File.join(File.dirname(__FILE__), '..', 'VERSION'))
@@ -36,5 +37,6 @@ module HDFS
         "0.0-unknown"
       end
     end # def self.to_s
+
   end # module Version
 end # module HDFS
