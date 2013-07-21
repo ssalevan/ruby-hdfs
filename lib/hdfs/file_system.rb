@@ -8,7 +8,7 @@ module HDFS
           yield item
         end
         if item.is_directory?
-          find path, &block
+          find item, &block
         end
       end
     end # def find path, &block
@@ -21,7 +21,7 @@ module HDFS
           found_items << item
         end
         if item.is_directory?
-          found_items << find_all(path, &block)
+          found_items << find_all(item, &block)
         end
       end.flat_map
     end # def find_all path, &block
