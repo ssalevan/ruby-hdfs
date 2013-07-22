@@ -1,6 +1,8 @@
 module HDFS
   class FileSystem
 
+    attr_reader :host, :local, :port, :user
+
     # Recursively scans HDFS::FileInfo objects under the supplied path using
     # the supplied match proc to determine matching files.  If a match is
     # found, calls the supplied block.
@@ -15,16 +17,16 @@ module HDFS
           block.call item
         end
         if item.is_directory?
-          find item, compare_proc &block
+          find item, match_proc &block
         end
       end
-    end # def find path, &block
+    end # def find path, match_proc, &block
 
     # Recursively scans HDFS::FileInfo objects under the supplied path using
     # the supplied match proc to determine matching files, returning a list of
     # all matches.
     #
-    # @param path [String] DFS path to search for files underå
+    # @param path [String] DFS path to search for files under
     # @param match_proc [Proc] determines if a HDFS::FileInfo object is a match
     def find_all path, match_proc
       dir_listing = ls path
@@ -34,16 +36,16 @@ module HDFS
           found_items << item
         end
         if item.is_directory?
-          found_items << find_all(item, &block)
+          found_items << find_all(item, match_proc)
         end
       end.flat_map
-    end # def find_all path, &block
+    end # def find_all path, match_proc
 
     # Reads the full contents of a DFS file, returning the contents as a
-    # String.  This method is not recommended for large files, as it will be
-    # bound by memory on the local system.
+    # String.  This method is not recommended for reading large files, as it
+    # will be bound by memory on the local system.
     #
-    # @param path 
+    # @param path [String]
     def read_all path
       file = open path, 'r'
       size = stat(path).size
@@ -55,9 +57,9 @@ module HDFS
       contents
     end # def read_all path
 
-    # Ensures that a file path exists on a DFS.
+    # Ensures that a file exists, creating it if it is not present.
     #
-    # @param path [String] DFS path to ensure file under.
+    # @param path [String] DFS path under which to ensure file existence
     def touch path
       if not exist? path
         new_file = open path, 'w'
@@ -66,6 +68,16 @@ module HDFS
       true
     end # def touch path
 
+    # Perfoms a recursive depth-first walk of the file hierarchy beneath the
+    # supplied DFS path.  At each level, calls the supplied block with the
+    # following arguments:
+    #
+    #   - current DFS path
+    #   - an Array of directories directly beneath current DFS path
+    #   - an Array of files directly beneath current DFS path
+    #
+    # @param path [String] DFS path to perform walk against
+    # @param block [Block] Block to execute upon each level
     def walk path, &block
       dir_listing = ls path
       components = dir_listing.reduce({:files => [],
