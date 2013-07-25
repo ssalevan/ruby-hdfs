@@ -17,7 +17,7 @@ module HDFS
           block.call item
         end
         if item.is_directory?
-          find item, match_proc &block
+          find item, match_proc, &block
         end
       end
     end # def find path, match_proc, &block
