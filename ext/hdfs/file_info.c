@@ -1,10 +1,13 @@
+#include <stdio.h>
+#include <string.h>
+
+#include "hdfs.h"
+#include "ruby.h"
+
 #include "file_info.h"
 
 #include "constants.h"
 #include "utils.h"
-
-#include <string.h>
-#include <stdio.h>
 
 
 typedef struct FileInfo {

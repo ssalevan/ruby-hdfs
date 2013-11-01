@@ -1,9 +1,11 @@
+#include <errno.h>
+#include <math.h>
+
+#include "ruby.h"
+
 #include "utils.h"
 
 #include "constants.h"
-
-#include <errno.h>
-#include <math.h>
 
 
 /*

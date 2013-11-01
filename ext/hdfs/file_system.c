@@ -1,13 +1,14 @@
+#include <fcntl.h>
+
+#include "ruby.h"
+#include "hdfs.h"
+
 #include "file_system.h"
 
 #include "constants.h"
 #include "file.h"
 #include "file_info.h"
 #include "utils.h"
-
-#include "hdfs.h"
-
-#include <fcntl.h>
 
 
 typedef struct FSData {
@@ -48,29 +49,6 @@ VALUE HDFS_File_System_alloc(VALUE klass) {
   data->fs = NULL;
   VALUE instance = Data_Wrap_Struct(klass, NULL, free_fs_data, data);
   return instance;
-}
-
-/**
- * call-seq:
- *    hdfs.rm(path, recursive=false) -> success
- *
- * Deletes the file at the supplied path, recursively if specified.  Returns
- * True if successful, raises a DFSException if this fails.
- */
-VALUE HDFS_File_System_rm(int argc, VALUE* argv, VALUE self) {
-  FSData* data = get_FSData(self);
-  VALUE path, recursive;
-  rb_scan_args(argc, argv, "11", &path, &recursive);
-  int hdfs_recursive = HDFS_DEFAULT_RECURSIVE_DELETE;
-  if (!NIL_P(recursive)) {
-    hdfs_recursive = (recursive == Qtrue) ? 1 : 0;
-  }
-  if (hdfsDelete(data->fs, StringValuePtr(path), hdfs_recursive) == -1) {
-    rb_raise(e_dfs_exception, "Could not delete file at path %s: %s",
-        StringValuePtr(path), get_error(errno));
-    return Qnil;
-  }
-  return Qtrue;
 }
 
 /**
@@ -356,6 +334,7 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
   VALUE r_local = rb_hash_aref(options, rb_eval_string(":local"));
   if (r_local == Qtrue) {
     data->fs = hdfsConnectAsUser(NULL, 0, hdfs_user);
+    rv_iv_set(self, "@local", Qtrue);
   } else {
     VALUE r_host = rb_hash_aref(options, rb_eval_string(":host"));
     VALUE r_port = rb_hash_aref(options, rb_eval_string(":port"));
@@ -365,7 +344,11 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
         (char*) HDFS_DEFAULT_HOST;
     int hdfs_port   = RTEST(r_port) ? NUM2INT(r_port) :
         HDFS_DEFAULT_PORT;
-    data->fs = hdfsConnectAsUser(hdfs_host, hdfs_port, hdfs_user);     
+    data->fs = hdfsConnectAsUser(hdfs_host, hdfs_port, hdfs_user);
+    rb_iv_set(self, "@local", Qfalse);
+    rb_iv_set(self, "@host", rb_str_new2(hdfs_host));
+    rb_iv_set(self, "@port", INT2NUM(hdfs_port));
+    rb_iv_set(self, "@user", rb_str_new2(hdfs_user));     
   }
  
   if (data->fs == NULL) {
@@ -462,7 +445,7 @@ VALUE HDFS_File_System_mkdir(VALUE self, VALUE path) {
  * opened, raises a CouldNotOpenError; otherwise, returns a HDFS::File
  * object corresponding to the file.
  *
- * modes can be one of the following:
+ * mode can contain any combination of the following characters:
  *
  * * *'a'*: Opens file for append access
  * * *'r'*: Opens file for read access
@@ -480,21 +463,24 @@ VALUE HDFS_File_System_mkdir(VALUE self, VALUE path) {
 VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
   FSData* data = get_FSData(self);
   VALUE path, mode, options;
-  int flags = O_RDONLY;
+  int flags = 0;
   rb_scan_args(argc, argv, "12", &path, &mode, &options);
   options = NIL_P(options) ? rb_hash_new() : options;
   // Sets file open mode if one is provided by the user.
   if (!NIL_P(mode)) {
-    if (strcmp("r", StringValuePtr(mode)) == 0) {
-      flags = O_RDONLY;
-    } else if (strcmp("w", StringValuePtr(mode)) == 0) {
-      flags = O_WRONLY;
-    } else if (strcmp("a", StringValuePtr(mode)) == 0) {
-      flags = O_WRONLY | O_APPEND;
-    } else {
-      rb_raise(rb_eArgError, "Mode must be 'r', 'w', or 'a'");
-      return Qnil;
+    VALUE mode_lowercase = rb_funcall(mode, rb_intern("downcase"), 0);
+    if (strstr("r", StringValuePtr(mode_lowercase)) != NULL) {
+      flags |= O_RDONLY;
+    } 
+    if (strstr("w", StringValuePtr(mode_lowercase)) != NULL) {
+      flags |= O_WRONLY;
+    } 
+    if (strstr("a", StringValuePtr(mode_lowercase)) != NULL) {
+      flags |= O_APPEND;
     }
+  } else {
+    // Takes the default value of read-only mode.
+    flags = O_RDONLY;
   }
   VALUE r_buffer_size = rb_hash_aref(options, rb_eval_string(":buffer_size"));
   VALUE r_replication = rb_hash_aref(options, rb_eval_string(":replication"));
@@ -520,9 +506,33 @@ VALUE HDFS_File_System_open(int argc, VALUE* argv, VALUE self) {
  */
 VALUE HDFS_File_System_rename(VALUE self, VALUE from_path, VALUE to_path) {
   FSData* data = get_FSData(self);
-  if (hdfsRename(data->fs, StringValuePtr(from_path), StringValuePtr(to_path)) == -1) {
+  if (hdfsRename(data->fs, StringValuePtr(from_path),
+          StringValuePtr(to_path)) == -1) {
     rb_raise(e_dfs_exception, "Could not rename path %s to path %s: %s",
         StringValuePtr(from_path), StringValuePtr(to_path), get_error(errno));
+    return Qnil;
+  }
+  return Qtrue;
+}
+
+/**
+ * call-seq:
+ *    hdfs.rm(path, recursive=false) -> success
+ *
+ * Deletes the file at the supplied path, recursively if specified.  Returns
+ * True if successful, raises a DFSException if this fails.
+ */
+VALUE HDFS_File_System_rm(int argc, VALUE* argv, VALUE self) {
+  FSData* data = get_FSData(self);
+  VALUE path, recursive;
+  rb_scan_args(argc, argv, "11", &path, &recursive);
+  int hdfs_recursive = HDFS_DEFAULT_RECURSIVE_DELETE;
+  if (!NIL_P(recursive)) {
+    hdfs_recursive = (recursive == Qtrue) ? 1 : 0;
+  }
+  if (hdfsDelete(data->fs, StringValuePtr(path), hdfs_recursive) == -1) {
+    rb_raise(e_dfs_exception, "Could not delete file at path %s: %s",
+        StringValuePtr(path), get_error(errno));
     return Qnil;
   }
   return Qtrue;
@@ -618,12 +628,8 @@ VALUE HDFS_File_System_utime(int argc, VALUE* argv, VALUE self) {
   VALUE r_atime = rb_hash_aref(options, rb_eval_string(":atime"));
   VALUE r_mtime = rb_hash_aref(options, rb_eval_string(":mtime"));
   // Converts any Time objects to seconds since the Unix epoch.
-  if (CLASS_OF(r_atime) == rb_cTime) {
-    r_atime = rb_funcall(r_atime, rb_intern("to_i"), 0);
-  }
-  if (CLASS_OF(r_mtime) == rb_cTime) {
-    r_mtime = rb_funcall(r_mtime, rb_intern("to_i"), 0);
-  }
+  r_atime = rb_funcall(r_atime, rb_intern("to_i"), 0);
+  r_mtime = rb_funcall(r_mtime, rb_intern("to_i"), 0);
   // Sets default values for last modified and/or last access time.
   tTime hdfsAccessTime = NIL_P(r_atime) ? -1 : NUM2LONG(r_atime);
   tTime hdfsModifiedTime = NIL_P(r_mtime) ? -1 : NUM2LONG(r_mtime);
@@ -636,6 +642,16 @@ VALUE HDFS_File_System_utime(int argc, VALUE* argv, VALUE self) {
     return Qnil;
   }
   return Qtrue;
+}
+
+VALUE HDFS_File_System_to_s(VALUE self) {
+  if (rb_iv_get(self, "@local") == Qtrue) {
+    return rb_sprintf("#<HDFS::FileSystem: local=true>");
+  } else {
+    return rb_sprintf("#<HDFS::FileSystem: host=%s, port=%s, user=%s>",
+        rb_iv_get(self, "@host"), rb_iv_get(self, "@port"),
+        rb_iv_get(self, "@user"));
+  }
 }
 
 void init_file_system(VALUE parent) {
@@ -668,6 +684,7 @@ void init_file_system(VALUE parent) {
   rb_define_method(c_file_system, "stat", HDFS_File_System_stat, 1);
   rb_define_method(c_file_system, "set_replication!",
       HDFS_File_System_set_replication, -1);
+  rb_define_method(c_file_system, "to_s", HDFS_File_System_to_s, 0);
   rb_define_method(c_file_system, "used", HDFS_File_System_used, 0);
   rb_define_method(c_file_system, "utime", HDFS_File_System_utime, -1);
 

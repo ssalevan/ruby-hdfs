@@ -1,5 +1,5 @@
 Gem::Specification.new do |gem|
-  gem.name     = 'ruby-hdfs-cdh4'
+  gem.name     = 'hdfs'
   gem.version  = File.read File.join File.dirname(__FILE__), 'VERSION'
   gem.date     = Time.now.strftime '%Y-%m-%d'
 

@@ -1,3 +1,6 @@
+#include "hdfs.h"
+#include "ruby.h"
+
 #include "file.h"
 
 #include "constants.h"
