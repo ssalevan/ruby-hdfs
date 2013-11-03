@@ -344,7 +344,7 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
         (char*) HDFS_DEFAULT_HOST;
     int hdfs_port   = RTEST(r_port) ? NUM2INT(r_port) :
         HDFS_DEFAULT_PORT;
-    data->fs = hdfsConnectAsUser(hdfs_host, hdfs_port, hdfs_user);
+    data->fs = hdfsConnect(hdfs_host, hdfs_port);
     rb_iv_set(self, "@local", Qfalse);
     rb_iv_set(self, "@host", rb_str_new2(hdfs_host));
     rb_iv_set(self, "@port", INT2NUM(hdfs_port));
