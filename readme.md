@@ -7,7 +7,7 @@
 
 ### installation
 ```
-gem install ruby-hdfs-cdh4
+gem install hdfs
 ```
 
 this gem provides defaults for installation on machines using cdh4 and the hadoop-libhdfs cloudera package, but the following environment variables are available for configuration.
@@ -17,10 +17,10 @@ this gem provides defaults for installation on machines using cdh4 and the hadoo
   - JAVA_LIB
 
 ### usage
-to setup your classpath on cdh4 machines require `hdfs/classpath`, or see [classpath.rb](https://github.com/dallasmarlow/ruby-hdfs-cdh4/blob/master/lib/hdfs/classpath.rb) as an example.
+to setup your classpath on cdh4 machines require `hdfs`, or see [hdfs.rb](https://github.com/ssalevan/ruby-hdfs/blob/master/lib/hdfs.rb) as an example.
 
 ```ruby
-require 'hdfs/classpath'
+require 'hdfs'
 
 # connecting to HDFS
 
