@@ -334,7 +334,7 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
   VALUE r_local = rb_hash_aref(options, rb_eval_string(":local"));
   if (r_local == Qtrue) {
     data->fs = hdfsConnectAsUser(NULL, 0, hdfs_user);
-    rv_iv_set(self, "@local", Qtrue);
+    rb_iv_set(self, "@local", Qtrue);
   } else {
     VALUE r_host = rb_hash_aref(options, rb_eval_string(":host"));
     VALUE r_port = rb_hash_aref(options, rb_eval_string(":port"));
