@@ -57,6 +57,14 @@ module HDFS
       contents
     end # def read_all path
 
+    def to_s
+      if local
+        "#<HDFS::FileSystem: local=true>"
+      else
+        "#<HDFS::FileSystem: host=#{host} port=#{port} user=#{user}>"
+      end
+    end
+
     # Ensures that a file exists, creating it if it is not present.
     #
     # @param path [String] DFS path under which to ensure file existence

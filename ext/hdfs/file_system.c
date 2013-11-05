@@ -650,16 +650,6 @@ VALUE HDFS_File_System_utime(int argc, VALUE* argv, VALUE self) {
   return Qtrue;
 }
 
-VALUE HDFS_File_System_to_s(VALUE self) {
-  if (rb_iv_get(self, "@local") == Qtrue) {
-    return rb_sprintf("#<HDFS::FileSystem: local=true>");
-  } else {
-    return rb_sprintf("#<HDFS::FileSystem: host=%s, port=%s, user=%s>",
-        rb_iv_get(self, "@host"), rb_iv_get(self, "@port"),
-        rb_iv_get(self, "@user"));
-  }
-}
-
 void init_file_system(VALUE parent) {
   c_file_system = rb_define_class_under(parent, "FileSystem", rb_cObject);
   rb_define_alloc_func(c_file_system, HDFS_File_System_alloc);
@@ -690,7 +680,6 @@ void init_file_system(VALUE parent) {
   rb_define_method(c_file_system, "stat", HDFS_File_System_stat, 1);
   rb_define_method(c_file_system, "set_replication!",
       HDFS_File_System_set_replication, -1);
-  rb_define_method(c_file_system, "to_s", HDFS_File_System_to_s, 0);
   rb_define_method(c_file_system, "used", HDFS_File_System_used, 0);
   rb_define_method(c_file_system, "utime", HDFS_File_System_utime, -1);
 
