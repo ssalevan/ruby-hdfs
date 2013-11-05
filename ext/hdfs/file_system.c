@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <unistd.h>
 
 #include "ruby.h"
 #include "hdfs.h"
@@ -327,10 +328,6 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
   FSData* data = NULL;
   Data_Get_Struct(self, FSData, data);
 
-  VALUE r_user = rb_hash_aref(options, rb_eval_string(":user"));
-  char* hdfs_user = RTEST(r_user) ? StringValuePtr(r_user) : 
-      (char*) HDFS_DEFAULT_USER;
-
   VALUE r_local = rb_hash_aref(options, rb_eval_string(":local"));
   if (r_local == Qtrue) {
     data->fs = hdfsConnectAsUser(NULL, 0, hdfs_user);
@@ -338,17 +335,21 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
   } else {
     VALUE r_host = rb_hash_aref(options, rb_eval_string(":host"));
     VALUE r_port = rb_hash_aref(options, rb_eval_string(":port"));
-
+    VALUE r_user = rb_hash_aref(options, rb_eval_string(":user"));
     // Sets default values for host and port if not supplied by user.
-    char* hdfs_host = RTEST(r_host) ? StringValuePtr(r_host) : 
+    char* hdfs_host = RTEST(r_host) ? StringValuePtr(r_host) :
         (char*) HDFS_DEFAULT_HOST;
     int hdfs_port   = RTEST(r_port) ? NUM2INT(r_port) :
         HDFS_DEFAULT_PORT;
-    data->fs = hdfsConnect(hdfs_host, hdfs_port);
+    if (NIL_P(r_user)) {
+      data->fs = hdfsConnect(hdfs_host, hdfs_port);
+    } else {
+      data->fs = hdfsConnectAsUser(hdfs_host, hdfs_port, hdfs_user);
+      rb_iv_set(self, "@user", rb_str_new2(hdfs_user)); 
+    }
     rb_iv_set(self, "@local", Qfalse);
     rb_iv_set(self, "@host", rb_str_new2(hdfs_host));
     rb_iv_set(self, "@port", INT2NUM(hdfs_port));
-    rb_iv_set(self, "@user", rb_str_new2(hdfs_user));     
   }
  
   if (data->fs == NULL) {

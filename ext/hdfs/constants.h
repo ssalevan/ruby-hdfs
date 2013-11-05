@@ -13,6 +13,6 @@ static const int HDFS_DEFAULT_PORT             = 8020;
 static const int HDFS_DEFAULT_RECURSIVE_DELETE = 0;
 static const int16_t HDFS_DEFAULT_REPLICATION  = 3;
 static const int HDFS_DEFAULT_STRING_LENGTH    = 1024;
-static const char* HDFS_DEFAULT_USER           = NULL;
+static const char* HDFS_DEFAULT_USER           = "hdfs";
 
 #endif /* HDFS_CONSTANTS_H */
