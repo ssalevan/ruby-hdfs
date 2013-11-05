@@ -329,13 +329,17 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
   Data_Get_Struct(self, FSData, data);
 
   VALUE r_local = rb_hash_aref(options, rb_eval_string(":local"));
+  VALUE r_user = rb_hash_aref(options, rb_eval_string(":user"));
   if (r_local == Qtrue) {
-    data->fs = hdfsConnectAsUser(NULL, 0, hdfs_user);
+    if (NIL_P(r_user)) {
+      data->fs = hdfsConnect(NULL, 0);
+    } else {
+      data->fs = hdfsConnectAsUser(NULL, 0, StringValuePtr(r_user));
+    }
     rb_iv_set(self, "@local", Qtrue);
   } else {
     VALUE r_host = rb_hash_aref(options, rb_eval_string(":host"));
     VALUE r_port = rb_hash_aref(options, rb_eval_string(":port"));
-    VALUE r_user = rb_hash_aref(options, rb_eval_string(":user"));
     // Sets default values for host and port if not supplied by user.
     char* hdfs_host = RTEST(r_host) ? StringValuePtr(r_host) :
         (char*) HDFS_DEFAULT_HOST;
@@ -344,7 +348,8 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
     if (NIL_P(r_user)) {
       data->fs = hdfsConnect(hdfs_host, hdfs_port);
     } else {
-      data->fs = hdfsConnectAsUser(hdfs_host, hdfs_port, hdfs_user);
+      data->fs = hdfsConnectAsUser(hdfs_host, hdfs_port,
+          StringValuePtr(r_user));
       rb_iv_set(self, "@user", rb_str_new2(hdfs_user)); 
     }
     rb_iv_set(self, "@local", Qfalse);
