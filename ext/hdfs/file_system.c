@@ -350,7 +350,7 @@ VALUE HDFS_File_System_initialize(int argc, VALUE* argv, VALUE self) {
     } else {
       data->fs = hdfsConnectAsUser(hdfs_host, hdfs_port,
           StringValuePtr(r_user));
-      rb_iv_set(self, "@user", rb_str_new2(hdfs_user)); 
+      rb_iv_set(self, "@user", rb_str_new2(StringValuePtr(r_user))); 
     }
     rb_iv_set(self, "@local", Qfalse);
     rb_iv_set(self, "@host", rb_str_new2(hdfs_host));
